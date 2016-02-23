@@ -12,14 +12,17 @@ import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
+import com.firebase.client.Firebase;
 
 public class MainActivity extends AppCompatActivity {
     CallbackManager callbackManager;
+    private final static String FIREBASE_URL = "https://fiery-heat-6556.firebaseio.com/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         FacebookSdk.sdkInitialize(getApplicationContext());
+        Firebase.setAndroidContext(this);
         setContentView(R.layout.activity_main);
         callbackManager = CallbackManager.Factory.create();
         LoginButton loginButton = (LoginButton) findViewById(R.id.login_button);
@@ -40,6 +43,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        Firebase myFirebaseRef = new Firebase(FIREBASE_URL);
+        myFirebaseRef.child("message").setValue("Do you have data? You'll love Firebase.");
     }
 
     @Override
