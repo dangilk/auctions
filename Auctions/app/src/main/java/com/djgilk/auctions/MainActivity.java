@@ -6,51 +6,40 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.facebook.CallbackManager;
-import com.facebook.FacebookCallback;
-import com.facebook.FacebookException;
+import com.djgilk.auctions.presenter.LoginPresenter;
+import com.djgilk.auctions.view.LinearLayoutContainer;
 import com.facebook.FacebookSdk;
-import com.facebook.login.LoginResult;
-import com.facebook.login.widget.LoginButton;
-import com.firebase.client.Firebase;
+
+import javax.inject.Inject;
+
+import butterknife.Bind;
+import butterknife.ButterKnife;
 
 public class MainActivity extends AppCompatActivity {
-    CallbackManager callbackManager;
-    private final static String FIREBASE_URL = "https://fiery-heat-6556.firebaseio.com/";
+
+    @Inject
+    LoginPresenter loginPresenter;
+
+    @Bind(R.id.container)
+    LinearLayoutContainer container;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ((MainApplication) getApplication()).getMainComponent().inject(this);
         FacebookSdk.sdkInitialize(getApplicationContext());
-        Firebase.setAndroidContext(this);
+        //Firebase.setAndroidContext(this);
         setContentView(R.layout.activity_main);
-        callbackManager = CallbackManager.Factory.create();
-        LoginButton loginButton = (LoginButton) findViewById(R.id.login_button);
-        loginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
-            @Override
-            public void onSuccess(LoginResult loginResult) {
-                // App code
-            }
+        ButterKnife.bind(this);
+        loginPresenter.onCreate(this);
+        //firebase = new Firebase(FIREBASE_URL);
 
-            @Override
-            public void onCancel() {
-                // App code
-            }
-
-            @Override
-            public void onError(FacebookException exception) {
-                // App code
-            }
-        });
-
-        Firebase myFirebaseRef = new Firebase(FIREBASE_URL);
-        myFirebaseRef.child("message").setValue("Do you have data? You'll love Firebase.");
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        callbackManager.onActivityResult(requestCode, resultCode, data);
+        loginPresenter.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override
