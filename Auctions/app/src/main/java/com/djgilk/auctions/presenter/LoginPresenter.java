@@ -6,21 +6,18 @@ import android.util.Log;
 import android.widget.LinearLayout;
 
 import com.djgilk.auctions.R;
-import com.djgilk.auctions.facebook.FacebookFunctions;
-import com.djgilk.auctions.facebook.FbAuthEvent;
+import com.djgilk.auctions.facebook.RxFacebook;
+import com.djgilk.auctions.firebase.RxFirebase;
+import com.djgilk.auctions.model.ClientConfig;
 import com.facebook.AccessToken;
 import com.facebook.CallbackManager;
-import com.facebook.FacebookCallback;
-import com.facebook.FacebookException;
-import com.facebook.login.LoginResult;
-import com.facebook.login.widget.LoginButton;
+import com.facebook.login.LoginManager;
 import com.firebase.client.Firebase;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import butterknife.Bind;
-import rx.Observable;
 import rx.Observer;
 
 /**
@@ -30,66 +27,43 @@ import rx.Observer;
 public class LoginPresenter extends ViewPresenter {
     final static String FB_APP_ID = "215370665481827";
 
-    CallbackManager callbackManager;
     AccessToken accessToken;
-
-    final Observable<FbAuthEvent> loginStream = Observable.empty();
 
     @Inject
     Firebase firebase;
 
+    @Inject
+    CallbackManager callbackManager;
+
     @Bind(R.id.ll_login)
     LinearLayout loginLayout;
-
-    @Bind(R.id.lb_login)
-    LoginButton loginButton;
 
     @Inject
     public LoginPresenter () {};
 
     public void onCreate(Activity activity) {
         super.onCreate(activity);
-        callbackManager = CallbackManager.Factory.create();
-        loginStream.doOnNext(new FacebookFunctions.HideLoginButton(loginButton)).subscribe(new Observer<FbAuthEvent>() {
-            @Override
-            public void onCompleted() {
-                Log.i("Dan", "onCompleted");
-            }
+        LoginManager loginManager = LoginManager.getInstance();
+        Log.i("Dan", "subscribe to auth");
+        RxFacebook.observeFacebookAuth(activity, callbackManager).flatMap(new RxFirebase.ToFirebaseAuthEvent(firebase))
+                .flatMap(new RxFirebase.ToFirebaseObject<ClientConfig>(firebase.child("clientConfig"), ClientConfig.class))
 
-            @Override
-            public void onError(Throwable e) {
-                Log.i("Dan", "onError");
-            }
+                .subscribe(new Observer<ClientConfig>() {
+                    @Override
+                    public void onCompleted() {
+                        Log.i("Dan", "onCompleted");
+                    }
 
-            @Override
-            public void onNext(FbAuthEvent fbAuthEvent) {
-                Log.i("Dan", "onNext");
-            }
-        });
-        loginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
-            @Override
-            public void onSuccess(LoginResult loginResult) {
-                //loginButton.setVisibility(View.GONE);
-                emitAuthEvent();
-            }
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.i("Dan", "onError");
+                    }
 
-            @Override
-            public void onCancel() {
-                emitAuthEvent();
-            }
-
-            @Override
-            public void onError(FacebookException exception) {
-                emitAuthEvent();
-            }
-        });
-        emitAuthEvent();
-    }
-
-    public void emitAuthEvent() {
-        accessToken = AccessToken.getCurrentAccessToken();
-        Log.i("Dan", "emit auth event: " + accessToken.getToken());
-        loginStream.mergeWith(Observable.just(new FbAuthEvent(accessToken)));
+                    @Override
+                    public void onNext(ClientConfig config) {
+                        Log.i("Dan", "got client config! test string = " + config.getTest());
+                    }
+                });
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {

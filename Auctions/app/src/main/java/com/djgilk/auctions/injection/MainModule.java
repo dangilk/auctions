@@ -1,6 +1,7 @@
 package com.djgilk.auctions.injection;
 
 import com.djgilk.auctions.MainApplication;
+import com.facebook.CallbackManager;
 import com.firebase.client.Firebase;
 
 import javax.inject.Singleton;
@@ -30,5 +31,11 @@ public class MainModule {
     public Firebase provideFirebase(MainApplication mainApplication) {
         Firebase.setAndroidContext(mainApplication);
         return new Firebase(FIREBASE_URL);
+    }
+
+    @Provides
+    @Singleton
+    public CallbackManager provideCallbackManager() {
+        return CallbackManager.Factory.create();
     }
 }

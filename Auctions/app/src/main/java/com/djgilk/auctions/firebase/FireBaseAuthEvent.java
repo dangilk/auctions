@@ -5,10 +5,10 @@ import com.firebase.client.AuthData;
 /**
  * Created by dangilk on 2/25/16.
  */
-public class FireBaseAuthEvent {
+public class FirebaseAuthEvent {
     final private AuthData authData;
 
-    public FireBaseAuthEvent(AuthData authData) {
+    public FirebaseAuthEvent(AuthData authData) {
         this.authData = authData;
     }
 }
