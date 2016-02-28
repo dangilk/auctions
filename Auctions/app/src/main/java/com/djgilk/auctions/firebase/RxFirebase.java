@@ -33,10 +33,10 @@ public class RxFirebase {
 
         @Override
         public Observable<T> call(FirebaseAuthEvent firebaseAuthEvent) {
-            return observe(firebase, clazz);
+            return observe();
         }
 
-        public Observable<T> observe(final Firebase firebase, final Class clazz) {
+        public Observable<T> observe() {
             return Observable.create(new Observable.OnSubscribe<T>() {
                 @Override
                 public void call(final Subscriber<? super T> subscriber) {

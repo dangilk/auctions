@@ -1,6 +1,7 @@
 package com.djgilk.auctions.presenter;
 
 import android.app.Activity;
+import android.view.View;
 
 import butterknife.ButterKnife;
 
@@ -9,7 +10,10 @@ import butterknife.ButterKnife;
  */
 public abstract class ViewPresenter {
 
+    public abstract void onDestroy();
+    public abstract View getLayout();
     public void onCreate(Activity activity) {
         ButterKnife.bind(this, activity);
     }
+
 }
