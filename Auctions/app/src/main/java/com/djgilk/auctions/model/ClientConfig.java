@@ -9,6 +9,10 @@ public class ClientConfig {
 
     public ClientConfig(){};
 
+    public static String getRootPath() {
+        return "clientConfig";
+    }
+
     public boolean isKillSwitch() {
         return killSwitch;
     }

@@ -10,6 +10,7 @@ import android.widget.ImageView;
 
 import com.djgilk.auctions.presenter.ViewPresenter;
 
+import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -37,13 +38,27 @@ public class RxAndroid {
                     connection.setDoInput(true);
                     connection.connect();
                     InputStream input = connection.getInputStream();
-                    final Bitmap bitmap = BitmapFactory.decodeStream(input);
+                    final Bitmap bitmap = BitmapFactory.decodeStream(new BufferedInputStream(input));
                     subscriber.onNext(bitmap);
                 } catch (Exception e) {
                     subscriber.onError(e);
                 }
             }
         });
+    }
+
+    public static class ToLoadedImageView implements Func1<Bitmap, Observable<Boolean>> {
+        final ImageView imageView;
+
+        public ToLoadedImageView(ImageView imageView) {
+            this.imageView = imageView;
+        }
+
+        @Override
+        public Observable<Boolean> call(Bitmap bitmap) {
+            imageView.setImageBitmap(bitmap);
+            return Observable.just(true);
+        }
     }
 
     public static void loadImage(final ImageView imageView, final String imageUrl) {

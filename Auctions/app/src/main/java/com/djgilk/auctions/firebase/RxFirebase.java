@@ -10,10 +10,14 @@ import com.firebase.client.FirebaseError;
 import com.firebase.client.FirebaseException;
 import com.firebase.client.ValueEventListener;
 
+import javax.inject.Inject;
+
 import rx.Observable;
 import rx.Subscriber;
 import rx.functions.Action0;
 import rx.functions.Func1;
+import rx.observables.ConnectableObservable;
+import rx.schedulers.Schedulers;
 import rx.subscriptions.Subscriptions;
 
 /**
@@ -21,8 +25,22 @@ import rx.subscriptions.Subscriptions;
  */
 public class RxFirebase {
 
+    @Inject
+    Firebase firebase;
 
-    public static class ToFirebaseObject<T extends Object> implements Func1<FirebaseAuthEvent, Observable<T>> {
+    @Inject
+    public RxFirebase(){}
+
+    public <T extends Object> Observable<T> observeFirebaseObject(ConnectableObservable<FirebaseAuthEvent> authEvent, String rootPath, Class<T> clazz) {
+        return authEvent.observeOn(Schedulers.io()).flatMap(new RxFirebase.ToFirebaseObject<T>(firebase.child(rootPath), clazz));
+    }
+
+    public <T extends Object> ToFirebaseObject<T> observeFirebaseObject(String rootPath, Class<T> clazz) {
+        return new RxFirebase.ToFirebaseObject<T>(firebase.child(rootPath), clazz);
+    }
+
+
+    public static class ToFirebaseObject<T extends Object> implements Func1<FirebaseAuthEvent,Observable<T>> {
         private final Firebase firebase;
         private final Class clazz;
 
@@ -32,7 +50,7 @@ public class RxFirebase {
         }
 
         @Override
-        public Observable<T> call(FirebaseAuthEvent firebaseAuthEvent) {
+        public Observable<T> call(FirebaseAuthEvent o) {
             return observe();
         }
 

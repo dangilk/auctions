@@ -8,6 +8,10 @@ public class CurrentItem {
     private String imageUrl;
     private int price;
 
+    public static String getRootPath() {
+        return "sharedState/currentItem";
+    }
+
     public String getName() {
         return name;
     }
