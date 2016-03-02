@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.util.Log;
 
 import com.facebook.AccessToken;
+import com.facebook.AccessTokenTracker;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
@@ -13,15 +14,24 @@ import com.facebook.login.LoginResult;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.inject.Inject;
+
 import rx.Observable;
 import rx.Subscriber;
+import rx.functions.Action0;
+import rx.subscriptions.Subscriptions;
 
 /**
  * Created by dangilk on 2/26/16.
  */
 public class RxFacebook {
 
-    public static Observable<FacebookAuthEvent> observeFacebookAuth(final Activity activity, final CallbackManager callbackManager) {
+    AccessTokenTracker accessTokenTracker;
+
+    @Inject
+    RxFacebook(){}
+
+    public Observable<FacebookAuthEvent> observeFacebookAuth(final Activity activity, final CallbackManager callbackManager) {
         return Observable.create(new Observable.OnSubscribe<FacebookAuthEvent>() {
             @Override
             public void call(final Subscriber<? super FacebookAuthEvent> subscriber) {
@@ -30,12 +40,12 @@ public class RxFacebook {
                     @Override
                     public void onSuccess(LoginResult loginResult) {
                         Log.i("Dan", "facebook authed");
-                        subscriber.onNext(new FacebookAuthEvent(loginResult.getAccessToken()));
+                        //subscriber.onNext(new FacebookAuthEvent(loginResult.getAccessToken()));
                     }
 
                     @Override
                     public void onCancel() {
-                        subscriber.onNext(new FacebookAuthEvent(null));
+                        //subscriber.onError(new RuntimeException("user cancelled login"));
                     }
 
                     @Override
@@ -43,13 +53,39 @@ public class RxFacebook {
                         subscriber.onError(exception);
                     }
                 });
+
+                if (accessTokenTracker == null) {
+                    Log.d("Dan", "start tracking facebook data");
+                    accessTokenTracker = new AccessTokenTracker() {
+                        @Override
+                        protected void onCurrentAccessTokenChanged(
+                                AccessToken oldAccessToken,
+                                AccessToken currentAccessToken) {
+                            Log.d("Dan", "access token changed: " + currentAccessToken.getToken());
+
+                            subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
+                        }
+                    };
+                    accessTokenTracker.startTracking();
+                }
+
                 final List<String> permissions = new ArrayList<String>();
                 AccessToken currentAccessToken = AccessToken.getCurrentAccessToken();
                 if (currentAccessToken == null || currentAccessToken.isExpired()) {
                     loginManager.logInWithReadPermissions(activity, permissions);
                 } else {
+                    Log.d("Dan", "facebook access token: " + currentAccessToken.getToken());
                     subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
                 }
+
+                // When the subscription is cancelled, clean up
+                subscriber.add(Subscriptions.create(new Action0() {
+                    @Override
+                    public void call() {
+                        Log.d("Dan", "stop tracking facebook data");
+                        accessTokenTracker.stopTracking();
+                    }
+                }));
             }
         });
     }

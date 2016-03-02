@@ -55,8 +55,7 @@ public class AuctionPresenter extends ViewPresenter {
                 .observeOn(Schedulers.io()).flatMap(new LoadedCurrentItem(ivAuctionImage));
         final Observable<ClientConfig> observeClientConfig =
                 rxFirebase.observeFirebaseObject(connectableAuthEvent, ClientConfig.getRootPath(), ClientConfig.class);
-
-        clientConfigSubscription = observeClientConfig.subscribe(new Observer<ClientConfig>() {
+        observeClientConfig.subscribe(new Observer<ClientConfig>() {
             @Override
             public void onCompleted() {
 
@@ -73,7 +72,7 @@ public class AuctionPresenter extends ViewPresenter {
             }
         });
 
-        connectableAuthEvent.connect();
+        clientConfigSubscription = connectableAuthEvent.connect();
         return observeCurrentItem.zipWith(observeClientConfig, new RxHelper.ZipWaiter());
     }
 

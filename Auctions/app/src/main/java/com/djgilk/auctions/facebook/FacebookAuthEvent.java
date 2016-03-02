@@ -12,7 +12,7 @@ public class FacebookAuthEvent {
     }
 
     public boolean isLoggedIn() {
-        return accessToken != null;
+        return accessToken != null && !accessToken.isExpired();
     }
 
     public AccessToken getAccessToken(){

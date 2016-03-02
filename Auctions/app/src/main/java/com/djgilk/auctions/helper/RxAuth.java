@@ -24,10 +24,13 @@ public class RxAuth {
     Firebase firebase;
 
     @Inject
+    RxFacebook rxFacebook;
+
+    @Inject
     public RxAuth() {
     }
 
     public ConnectableObservable<FirebaseAuthEvent> publishAuthEvents (Activity activity) {
-        return RxFacebook.observeFacebookAuth(activity, callbackManager).subscribeOn(Schedulers.io()).flatMap(new RxFirebase.ToFirebaseAuthEvent(firebase)).publish();
+        return rxFacebook.observeFacebookAuth(activity, callbackManager).subscribeOn(Schedulers.io()).flatMap(new RxFirebase.ToFirebaseAuthEvent(firebase)).publish();
     }
 }

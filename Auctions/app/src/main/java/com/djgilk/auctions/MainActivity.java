@@ -19,6 +19,7 @@ import javax.inject.Inject;
 
 import rx.Observable;
 import rx.Observer;
+import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.observables.ConnectableObservable;
 
@@ -35,6 +36,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Inject
     RxAuth rxAuth;
+
+    Subscription authSubscription;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,12 +68,13 @@ public class MainActivity extends AppCompatActivity {
                 Log.i("Dan", "init onNext");
             }
         });
-        authObservable.connect();
+        authSubscription = authObservable.connect();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        authSubscription.unsubscribe();
         loginPresenter.onDestroy();
         auctionPresenter.onDestroy();
     }

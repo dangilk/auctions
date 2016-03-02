@@ -103,28 +103,54 @@ public class RxFirebase {
             return Observable.create(new Observable.OnSubscribe<FirebaseAuthEvent>() {
                 @Override
                 public void call(final Subscriber<? super FirebaseAuthEvent> subscriber) {
-                    if (facebookAuthEvent.isLoggedIn()) {
-                        firebase.authWithOAuthToken("facebook", facebookAuthEvent.getAccessToken().getToken(), new Firebase.AuthResultHandler() {
-                            @Override
-                            public void onAuthenticated(AuthData authData) {
-                                Log.i("Dan", "firebase authed");
+                    Log.d("Dan", "facebookAuthEvent triggered firebaseAuthEvent");
+                    final Firebase.AuthStateListener authStateListener = new Firebase.AuthStateListener() {
+                        @Override
+                        public void onAuthStateChanged(AuthData authData) {
+                            if (authData == null) {
+                                Log.d("Dan", "firebase not authed");
+                                // firebase not authed
+                                if (facebookAuthEvent.isLoggedIn()) {
+                                    firebase.authWithOAuthToken("facebook", facebookAuthEvent.getAccessToken().getToken(), new Firebase.AuthResultHandler() {
+                                        @Override
+                                        public void onAuthenticated(AuthData authData) {
+                                            // no op, process auth in else clause below
+                                        }
+
+                                        @Override
+                                        public void onAuthenticationError(FirebaseError firebaseError) {
+                                            Log.w("Dan", "firebase auth error");
+                                            subscriber.onError(firebaseError.toException());
+                                        }
+                                    });
+                                } else {
+                                    firebase.unauth();
+                                }
+                            } else {
+                                // firebase already authed
+                                Log.i("Dan", "firebase authed. uid = " + authData.getUid());
+                                for (String value : authData.getProviderData().keySet()) {
+                                    //Log.i("Dan", "fb key: " + value);
+                                }
+                                final String uid = authData.getUid();
+                                //final User user = firebase.
                                 subscriber.onNext(new FirebaseAuthEvent(authData));
                             }
+                        }
+                    };
 
-                            @Override
-                            public void onAuthenticationError(FirebaseError firebaseError) {
-                                Log.w("Dan", "firebase auth error");
-                                subscriber.onError(firebaseError.toException());
-                            }
-                        });
-                    } else {
-                        firebase.unauth();
-                    }
+                    firebase.addAuthStateListener(authStateListener);
+
+                    // When the subscription is cancelled, remove the listener
+                    subscriber.add(Subscriptions.create(new Action0() {
+                        @Override
+                        public void call() {
+                            Log.d("Dan", "removing firebase auth listener");
+                            firebase.removeAuthStateListener(authStateListener);
+                        }
+                    }));
                 }
             });
         }
     }
-
-
-
 }
