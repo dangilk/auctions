@@ -41,8 +41,8 @@ public class AuctionPresenter extends ViewPresenter {
     @Bind(R.id.iv_auctionImage)
     ImageView ivAuctionImage;
 
-    @Bind(R.id.tv_auctionEnabled)
-    TextView tvAuctionEnabled;
+    @Bind(R.id.tv_auctionTitle)
+    TextView tvAuctionTitle;
 
     @Inject
     public AuctionPresenter(){};
@@ -69,7 +69,7 @@ public class AuctionPresenter extends ViewPresenter {
 
             @Override
             public void onNext(ClientConfig clientConfig) {
-                tvAuctionEnabled.setText(clientConfig.getTest());
+                tvAuctionTitle.setText(clientConfig.getTest());
             }
         });
 

@@ -3,18 +3,114 @@
     android:orientation="vertical" android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:id="@+id/ll_auction"
-    android:visibility="gone">
-
-    <ImageView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/iv_auctionImage"
-        android:layout_gravity="center_horizontal"/>
+    android:background="#d6daff"
+    android:gravity="center"
+    android:visibility="visible">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Large Text"
-        android:id="@+id/tv_auctionEnabled" />
+        android:layout_gravity="center"
+        android:textSize="20sp"
+        android:text="Extra Large Lamp"
+        android:id="@+id/tv_auctionTitle" />
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxHeight="300dp"
+        android:minHeight="200dp"
+        android:id="@+id/iv_auctionImage"
+        android:layout_gravity="center_horizontal"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Current Bid"
+            android:textSize="15sp"
+            android:paddingRight="10dp"/>
+
+        <TextView
+            android:id="@+id/tv_highBid"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="18"
+            android:textSize="15sp"
+            android:paddingRight="10dp"/>
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/coin" />
+
+    </LinearLayout>
+
+    <Button
+        android:layout_marginTop="10dp"
+        android:id="@+id/bt_bid"
+        android:layout_gravity="center"
+        android:text="Bid Now!"
+        android:textColor="#FFFFFF"
+        android:textSize="30sp"
+
+        android:layout_width="270dp"
+        android:layout_height="60dp"
+        android:background="@drawable/buttonshape"
+        android:shadowColor="#A8A8A8"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="5"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight=".25"
+            android:gravity="center">
+            <TextView
+                android:id="@+id/tv_userCoins"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="20"
+                android:textSize="50dp"
+                android:layout_marginRight="5dp"/>
+            <ImageView
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:src="@drawable/coin"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_weight=".5"
+            android:layout_height="wrap_content">
+            <!-- empty for layout reasons -->
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/iv_settings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_weight=".25"
+            android:src="@drawable/ic_settings_black_24dp" />
+
+
+    </LinearLayout>
+
+
+
+
 </LinearLayout>
