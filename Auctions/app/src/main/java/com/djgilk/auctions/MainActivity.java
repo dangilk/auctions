@@ -8,7 +8,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 import com.djgilk.auctions.helper.RxAndroid;
-import com.djgilk.auctions.helper.RxHelper;
 import com.djgilk.auctions.helper.RxPublisher;
 import com.djgilk.auctions.presenter.AuctionPresenter;
 import com.djgilk.auctions.presenter.LoginPresenter;
@@ -16,7 +15,6 @@ import com.facebook.FacebookSdk;
 
 import javax.inject.Inject;
 
-import rx.Observable;
 import rx.Observer;
 import rx.android.schedulers.AndroidSchedulers;
 
@@ -43,12 +41,11 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         rxPublisher.publish(this);
-        //final ConnectableObservable<FirebaseAuthEvent> authObservable = rxAuth.publishAuthEvents(this);
 
-        Observable<Boolean> loginObservable = loginPresenter.onCreate(this);
-        Observable<Boolean> auctionObservable = auctionPresenter.onCreate(this);
+        loginPresenter.onCreate(this);
+        auctionPresenter.onCreate(this);
 
-        Observable.zip(loginObservable, auctionObservable, new RxHelper.ZipWaiter())
+        rxPublisher.getObservablesCompleteObservable()
         .observeOn(AndroidSchedulers.mainThread())
                 .flatMap(new RxAndroid.ToLayoutFade(mainApplication, loginPresenter, auctionPresenter))
                 .subscribe(new Observer<Object>() {
@@ -72,10 +69,10 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
-        rxPublisher.unsubscribe();
         loginPresenter.onDestroy();
         auctionPresenter.onDestroy();
+        rxPublisher.unsubscribe();
+        super.onDestroy();
     }
 
     @Override

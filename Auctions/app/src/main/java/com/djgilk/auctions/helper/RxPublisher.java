@@ -30,6 +30,7 @@ public class RxPublisher {
     ConnectableObservable<FirebaseAuthEvent> firebaseAuthEventObservable;
     ConnectableObservable<CurrentItem> currentItemObservable;
     ConnectableObservable<ClientConfig> clientConfigObservable;
+    ConnectableObservable<Boolean> observablesCompleteObservable;
 
     Set<ConnectableObservable<?>> connectableObservables = new HashSet<ConnectableObservable<?>>();
     Set<Subscription> subscriptions = new HashSet<Subscription>();
@@ -47,17 +48,22 @@ public class RxPublisher {
     RxPublisher() {}
 
     public void publish(Activity activity) {
+        // auth layer
         facebookAuthEventObservable = rxFacebook.observeFacebookAuth(activity, callbackManager).subscribeOn(Schedulers.io()).publish();
         firebaseAuthEventObservable = facebookAuthEventObservable.flatMap(rxFirebase.toFirebaseAuthEvent()).publish();
 
+        // data layer
         currentItemObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseObject(CurrentItem.getRootPath(), CurrentItem.class)).publish();
         clientConfigObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).publish();
 
+        // all complete
+        observablesCompleteObservable = currentItemObservable.zipWith(clientConfigObservable, new RxHelper.ZipWaiter()).publish();
 
         connectableObservables.add(facebookAuthEventObservable);
         connectableObservables.add(firebaseAuthEventObservable);
         connectableObservables.add(currentItemObservable);
         connectableObservables.add(clientConfigObservable);
+        connectableObservables.add(observablesCompleteObservable);
     }
 
     public void connect() {
@@ -70,6 +76,8 @@ public class RxPublisher {
         for (Subscription subscription : subscriptions) {
             subscription.unsubscribe();
         }
+        subscriptions.clear();
+        connectableObservables.clear();
     }
 
     // for facebook login
@@ -91,5 +99,9 @@ public class RxPublisher {
 
     public ConnectableObservable<ClientConfig> getClientConfigObservable() {
         return clientConfigObservable;
+    }
+
+    public ConnectableObservable<Boolean> getObservablesCompleteObservable() {
+        return observablesCompleteObservable;
     }
 }

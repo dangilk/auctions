@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
 import rx.Observable;
 import rx.Subscriber;
@@ -24,6 +25,7 @@ import rx.subscriptions.Subscriptions;
 /**
  * Created by dangilk on 2/26/16.
  */
+@Singleton
 public class RxFacebook {
 
     AccessTokenTracker accessTokenTracker;

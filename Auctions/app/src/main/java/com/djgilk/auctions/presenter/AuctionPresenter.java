@@ -18,6 +18,7 @@ import javax.inject.Inject;
 import butterknife.Bind;
 import rx.Observable;
 import rx.Observer;
+import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Func1;
 import rx.schedulers.Schedulers;
@@ -27,6 +28,9 @@ import rx.schedulers.Schedulers;
  */
 public class AuctionPresenter extends ViewPresenter {
     private final static String AUCTION_PRESENTER_TAG = "auctionPresenter";
+
+    Subscription imageSubscription;
+    Subscription configSubscription;
 
     @Inject
     RxFirebase rxFirebase;
@@ -46,13 +50,10 @@ public class AuctionPresenter extends ViewPresenter {
     @Inject
     public AuctionPresenter(){};
 
-    public Observable<Boolean> onCreate(Activity activity) {
+    public void onCreate(Activity activity) {
         super.onCreate(activity);
-        //final ConnectableObservable<FirebaseAuthEvent> connectableAuthEvent = authEvent.publish();
-        //final Observable<Boolean> observeCurrentItem =
-                rxPublisher.getCurrentItemObservable().observeOn(Schedulers.io()).flatMap(new LoadedCurrentItem(ivAuctionImage)).subscribe();
-       // final Observable<ClientConfig> observeClientConfig = rxPublisher.getClientConfigObservable();
-        rxPublisher.getClientConfigObservable().subscribe(new Observer<ClientConfig>() {
+        imageSubscription = rxPublisher.getCurrentItemObservable().observeOn(Schedulers.io()).flatMap(new LoadedCurrentItem(ivAuctionImage)).subscribe();
+        configSubscription = rxPublisher.getClientConfigObservable().subscribe(new Observer<ClientConfig>() {
             @Override
             public void onCompleted() {
 
@@ -68,13 +69,12 @@ public class AuctionPresenter extends ViewPresenter {
                 tvAuctionTitle.setText(clientConfig.getTest());
             }
         });
-        //return observeCurrentItem.zipWith(observeClientConfig, new RxHelper.ZipWaiter());
-        return Observable.just(true);
     }
 
     @Override
     public void onDestroy() {
-
+        imageSubscription.unsubscribe();
+        configSubscription.unsubscribe();
     }
 
     @Override
