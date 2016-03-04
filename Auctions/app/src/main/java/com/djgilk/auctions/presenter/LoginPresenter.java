@@ -1,16 +1,15 @@
 package com.djgilk.auctions.presenter;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.view.View;
 import android.widget.LinearLayout;
 
 import com.djgilk.auctions.R;
 import com.djgilk.auctions.firebase.FirebaseAuthEvent;
 import com.djgilk.auctions.helper.RxHelper;
+import com.djgilk.auctions.helper.RxPublisher;
 import com.facebook.AccessToken;
 import com.facebook.CallbackManager;
-import com.firebase.client.Firebase;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -18,7 +17,6 @@ import javax.inject.Singleton;
 import butterknife.Bind;
 import rx.Observable;
 import rx.Subscription;
-import rx.observables.ConnectableObservable;
 
 /**
  * Created by dangilk on 2/25/16.
@@ -31,7 +29,7 @@ public class LoginPresenter extends ViewPresenter {
     AccessToken accessToken;
 
     @Inject
-    Firebase firebase;
+    RxPublisher rxPublisher;
 
     @Inject
     CallbackManager callbackManager;
@@ -42,9 +40,9 @@ public class LoginPresenter extends ViewPresenter {
     @Inject
     public LoginPresenter () {};
 
-    public Observable<Boolean> onCreate(Activity activity, ConnectableObservable<FirebaseAuthEvent> authEvent) {
+    public Observable<Boolean> onCreate(Activity activity) {
         super.onCreate(activity);
-        return authEvent.flatMap(new RxHelper.ToBoolean<FirebaseAuthEvent>());
+        return rxPublisher.getFirebaseAuthEventObservable().flatMap(new RxHelper.ToBoolean<FirebaseAuthEvent>());
 
 
 //        return super.onCreate(activity)
@@ -111,9 +109,7 @@ public class LoginPresenter extends ViewPresenter {
         return LOGIN_PRESENTER_TAG;
     }
 
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        callbackManager.onActivityResult(requestCode, resultCode, data);
-    }
+
 
     public void onDestroy() {
         //loginSubscription.unsubscribe();

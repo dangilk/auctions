@@ -7,10 +7,9 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.djgilk.auctions.firebase.FirebaseAuthEvent;
 import com.djgilk.auctions.helper.RxAndroid;
-import com.djgilk.auctions.helper.RxAuth;
 import com.djgilk.auctions.helper.RxHelper;
+import com.djgilk.auctions.helper.RxPublisher;
 import com.djgilk.auctions.presenter.AuctionPresenter;
 import com.djgilk.auctions.presenter.LoginPresenter;
 import com.facebook.FacebookSdk;
@@ -19,9 +18,7 @@ import javax.inject.Inject;
 
 import rx.Observable;
 import rx.Observer;
-import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
-import rx.observables.ConnectableObservable;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -35,9 +32,8 @@ public class MainActivity extends AppCompatActivity {
     MainApplication mainApplication;
 
     @Inject
-    RxAuth rxAuth;
+    RxPublisher rxPublisher;
 
-    Subscription authSubscription;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,35 +42,38 @@ public class MainActivity extends AppCompatActivity {
         FacebookSdk.sdkInitialize(getApplicationContext());
         setContentView(R.layout.activity_main);
 
-        final ConnectableObservable<FirebaseAuthEvent> authObservable = rxAuth.publishAuthEvents(this);
+        rxPublisher.publish(this);
+        //final ConnectableObservable<FirebaseAuthEvent> authObservable = rxAuth.publishAuthEvents(this);
 
-        Observable<Boolean> loginObservable = loginPresenter.onCreate(this, authObservable);
-        Observable<Boolean> auctionObservable = auctionPresenter.onCreate(this, authObservable);
+        Observable<Boolean> loginObservable = loginPresenter.onCreate(this);
+        Observable<Boolean> auctionObservable = auctionPresenter.onCreate(this);
 
         Observable.zip(loginObservable, auctionObservable, new RxHelper.ZipWaiter())
-        .observeOn(AndroidSchedulers.mainThread()).flatMap(new RxAndroid.ToLayoutFade(mainApplication, loginPresenter, auctionPresenter)).subscribe(new Observer<Object>() {
-            @Override
-            public void onCompleted() {
-                Log.i("Dan", "init onCompleted");
-            }
+        .observeOn(AndroidSchedulers.mainThread())
+                .flatMap(new RxAndroid.ToLayoutFade(mainApplication, loginPresenter, auctionPresenter))
+                .subscribe(new Observer<Object>() {
+                    @Override
+                    public void onCompleted() {
+                        Log.i("Dan", "layout transition onCompleted");
+                    }
 
-            @Override
-            public void onError(Throwable e) {
-                Log.i("Dan", "init onError: " + e.getMessage());
-            }
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.i("Dan", "layout transition onError: " + e.getMessage());
+                    }
 
-            @Override
-            public void onNext(Object aBoolean) {
-                Log.i("Dan", "init onNext");
-            }
-        });
-        authSubscription = authObservable.connect();
+                    @Override
+                    public void onNext(Object aBoolean) {
+                        Log.i("Dan", "layout transition onNext");
+                    }
+                });
+        rxPublisher.connect();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        authSubscription.unsubscribe();
+        rxPublisher.unsubscribe();
         loginPresenter.onDestroy();
         auctionPresenter.onDestroy();
     }
@@ -82,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        loginPresenter.onActivityResult(requestCode, resultCode, data);
+        rxPublisher.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override

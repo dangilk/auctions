@@ -7,10 +7,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.djgilk.auctions.R;
-import com.djgilk.auctions.firebase.FirebaseAuthEvent;
 import com.djgilk.auctions.firebase.RxFirebase;
 import com.djgilk.auctions.helper.RxAndroid;
-import com.djgilk.auctions.helper.RxHelper;
+import com.djgilk.auctions.helper.RxPublisher;
 import com.djgilk.auctions.model.ClientConfig;
 import com.djgilk.auctions.model.CurrentItem;
 
@@ -19,10 +18,8 @@ import javax.inject.Inject;
 import butterknife.Bind;
 import rx.Observable;
 import rx.Observer;
-import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Func1;
-import rx.observables.ConnectableObservable;
 import rx.schedulers.Schedulers;
 
 /**
@@ -30,10 +27,12 @@ import rx.schedulers.Schedulers;
  */
 public class AuctionPresenter extends ViewPresenter {
     private final static String AUCTION_PRESENTER_TAG = "auctionPresenter";
-    private Subscription clientConfigSubscription;
 
     @Inject
     RxFirebase rxFirebase;
+
+    @Inject
+    RxPublisher rxPublisher;
 
     @Bind(R.id.ll_auction)
     LinearLayout auctionLayout;
@@ -47,15 +46,13 @@ public class AuctionPresenter extends ViewPresenter {
     @Inject
     public AuctionPresenter(){};
 
-    public Observable<Boolean> onCreate(Activity activity, ConnectableObservable<FirebaseAuthEvent> authEvent) {
+    public Observable<Boolean> onCreate(Activity activity) {
         super.onCreate(activity);
-        final ConnectableObservable<FirebaseAuthEvent> connectableAuthEvent = authEvent.publish();
-        final Observable<Boolean> observeCurrentItem =
-                rxFirebase.observeFirebaseObject(connectableAuthEvent, CurrentItem.getRootPath(), CurrentItem.class)
-                .observeOn(Schedulers.io()).flatMap(new LoadedCurrentItem(ivAuctionImage));
-        final Observable<ClientConfig> observeClientConfig =
-                rxFirebase.observeFirebaseObject(connectableAuthEvent, ClientConfig.getRootPath(), ClientConfig.class);
-        observeClientConfig.subscribe(new Observer<ClientConfig>() {
+        //final ConnectableObservable<FirebaseAuthEvent> connectableAuthEvent = authEvent.publish();
+        //final Observable<Boolean> observeCurrentItem =
+                rxPublisher.getCurrentItemObservable().observeOn(Schedulers.io()).flatMap(new LoadedCurrentItem(ivAuctionImage)).subscribe();
+       // final Observable<ClientConfig> observeClientConfig = rxPublisher.getClientConfigObservable();
+        rxPublisher.getClientConfigObservable().subscribe(new Observer<ClientConfig>() {
             @Override
             public void onCompleted() {
 
@@ -71,14 +68,13 @@ public class AuctionPresenter extends ViewPresenter {
                 tvAuctionTitle.setText(clientConfig.getTest());
             }
         });
-
-        clientConfigSubscription = connectableAuthEvent.connect();
-        return observeCurrentItem.zipWith(observeClientConfig, new RxHelper.ZipWaiter());
+        //return observeCurrentItem.zipWith(observeClientConfig, new RxHelper.ZipWaiter());
+        return Observable.just(true);
     }
 
     @Override
     public void onDestroy() {
-        clientConfigSubscription.unsubscribe();
+
     }
 
     @Override
