@@ -4,22 +4,31 @@ package com.djgilk.auctions.model;
  * Created by dangilk on 3/1/16.
  */
 public class User {
+    //private static String rootPath = "users/";
+
     // fb values
-    private final String id;
-    private final String displayName;
-    private final String profileImageURL;
+    private String facebookId;
+    private String displayName;
+    private String profileImageURL;
+
+    // auto assigned firebase value
+    private String firebaseId;
 
     // other values
-    private final int coins;
-    private final String address1;
-    private final String address2;
-    private final String city;
-    private final String state;
-    private final String zip;
+    private int coins;
+    private String address1;
+    private String address2;
+    private String city;
+    private String state;
+    private String zip;
 
-    public User(String id, String displayName, String profileImageURL, int coins, String address1
+    public User() {
+        new User(null,null,null,0,null,null,null,null,null);
+    }
+
+    public User(String facebookId, String displayName, String profileImageURL, int coins, String address1
             , String address2, String city, String state, String zip) {
-        this.id = id;
+        this.facebookId = facebookId;
         this.displayName = displayName;
         this.profileImageURL = profileImageURL;
         this.coins = coins;
@@ -30,8 +39,8 @@ public class User {
         this.zip = zip;
     }
 
-    public String getId() {
-        return id;
+    public String getFacebookId() {
+        return facebookId;
     }
 
     public String getDisplayName() {
@@ -65,4 +74,18 @@ public class User {
     public String getZip() {
         return zip;
     }
+
+    public String getFirebaseId() {
+        return firebaseId;
+    }
+
+    public void setFirebaseId(String firebaseId) {
+        this.firebaseId = firebaseId;
+    }
+
+    public static String getParentRootPath() {
+        return "users/";
+    }
+
+
 }

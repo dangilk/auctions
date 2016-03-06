@@ -32,16 +32,16 @@ public class MainActivity extends AppCompatActivity {
     @Inject
     RxPublisher rxPublisher;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ((MainApplication) getApplication()).getMainComponent().inject(this);
+        getMainApplication().getMainComponent().inject(this);
         FacebookSdk.sdkInitialize(getApplicationContext());
         setContentView(R.layout.activity_main);
 
         rxPublisher.publish(this);
 
+        // initialize presenters
         loginPresenter.onCreate(this);
         auctionPresenter.onCreate(this);
 
@@ -65,6 +65,10 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
         rxPublisher.connect();
+    }
+
+    private MainApplication getMainApplication() {
+        return ((MainApplication) getApplication());
     }
 
     @Override

@@ -9,6 +9,7 @@ import com.djgilk.auctions.firebase.FirebaseAuthEvent;
 import com.djgilk.auctions.firebase.RxFirebase;
 import com.djgilk.auctions.model.ClientConfig;
 import com.djgilk.auctions.model.CurrentItem;
+import com.djgilk.auctions.model.User;
 import com.facebook.CallbackManager;
 
 import java.util.HashSet;
@@ -31,6 +32,8 @@ public class RxPublisher {
     ConnectableObservable<CurrentItem> currentItemObservable;
     ConnectableObservable<ClientConfig> clientConfigObservable;
     ConnectableObservable<Boolean> observablesCompleteObservable;
+    ConnectableObservable<User> userObservable;
+    ConnectableObservable<FirebaseAuthEvent> userMappingsObservable;
 
     Set<ConnectableObservable<?>> connectableObservables = new HashSet<ConnectableObservable<?>>();
     Set<Subscription> subscriptions = new HashSet<Subscription>();
@@ -55,6 +58,8 @@ public class RxPublisher {
         // data layer
         currentItemObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseObject(CurrentItem.getRootPath(), CurrentItem.class)).publish();
         clientConfigObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).publish();
+        userMappingsObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseUserId()).publish();
+        userObservable = userMappingsObservable.flatMap(rxFirebase.toFirebaseUser()).publish();
 
         // all complete
         observablesCompleteObservable = currentItemObservable.zipWith(clientConfigObservable, new RxHelper.ZipWaiter()).publish();
@@ -63,6 +68,8 @@ public class RxPublisher {
         connectableObservables.add(firebaseAuthEventObservable);
         connectableObservables.add(currentItemObservable);
         connectableObservables.add(clientConfigObservable);
+        connectableObservables.add(userMappingsObservable);
+        connectableObservables.add(userObservable);
         connectableObservables.add(observablesCompleteObservable);
     }
 
@@ -103,5 +110,9 @@ public class RxPublisher {
 
     public ConnectableObservable<Boolean> getObservablesCompleteObservable() {
         return observablesCompleteObservable;
+    }
+
+    public ConnectableObservable<User> getUserObservable() {
+        return userObservable;
     }
 }
