@@ -4,7 +4,6 @@ import android.util.Log;
 
 import com.djgilk.auctions.facebook.FacebookAuthEvent;
 import com.djgilk.auctions.model.User;
-import com.djgilk.auctions.model.UserMappings;
 import com.firebase.client.AuthData;
 import com.firebase.client.DataSnapshot;
 import com.firebase.client.Firebase;
@@ -33,63 +32,21 @@ public class RxFirebase {
     @Inject
     public RxFirebase(){}
 
-    public Func1<FirebaseAuthEvent, Observable<FirebaseAuthEvent>> toFirebaseUserId() {
-        return new Func1<FirebaseAuthEvent, Observable<FirebaseAuthEvent>>() {
+    public Func1<User, Observable<Boolean>> toLoginState() {
+        return new Func1<User, Observable<Boolean>>() {
             @Override
-            public Observable<FirebaseAuthEvent> call(FirebaseAuthEvent firebaseAuthEvent) {
-                return observeFirebaseUserMapping(firebaseAuthEvent);
+            public Observable<Boolean> call(User user) {
+                Log.d("Dan", "login flow complete: user = " + user);
+                return Observable.just(user != null);
             }
         };
-    }
-
-    public Observable<FirebaseAuthEvent> observeFirebaseUserMapping(final FirebaseAuthEvent firebaseAuthEvent) {
-        return Observable.create(new Observable.OnSubscribe<FirebaseAuthEvent>() {
-            @Override
-            public void call(final Subscriber<? super FirebaseAuthEvent> subscriber) {
-                final String uid = firebaseAuthEvent.getAuthData().getUid();
-                final String provider = firebaseAuthEvent.getAuthData().getProvider();
-                final String userMapPath = UserMappings.getUserMappingsRoot() + provider + "/" + uid;
-                Log.d("Dan", "get firebase userMapping at path: " + userMapPath);
-                final Firebase existingUserMapRef = firebase.child(userMapPath);
-                final ValueEventListener listener = existingUserMapRef.addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        if (dataSnapshot == null || !dataSnapshot.exists()) {
-                            // no user mapping
-                            Log.d("Dan", "no user mapping");
-                        } else {
-                            //existing user mapping
-                            Log.d("Dan", "found existing user mapping");
-                            String firebaseId = dataSnapshot.getValue(String.class);
-                            firebaseAuthEvent.setFirebaseUid(firebaseId);
-                        }
-                        subscriber.onNext(firebaseAuthEvent);
-                    }
-
-                    @Override
-                    public void onCancelled(FirebaseError error) {
-                        Log.d("Dan", "firebase error getting user mapping");
-                        // Turn the FirebaseError into a throwable to conform to the API
-                        subscriber.onError(new FirebaseException(error.getMessage()));
-                    }
-                });
-
-                // When the subscription is cancelled, remove the listener
-                subscriber.add(Subscriptions.create(new Action0() {
-                    @Override
-                    public void call() {
-                        existingUserMapRef.removeEventListener(listener);
-                    }
-                }));
-            }
-        });
     }
 
     public Func1<FirebaseAuthEvent, Observable<User>> toFirebaseUser() {
         return new Func1<FirebaseAuthEvent, Observable<User>>() {
             @Override
-            public Observable<User> call(FirebaseAuthEvent firebaseId) {
-                return observeFirebaseUser(firebaseId);
+            public Observable<User> call(FirebaseAuthEvent firebaseAuthEvent) {
+                return observeFirebaseUser(firebaseAuthEvent);
             }
         };
     }
@@ -98,39 +55,27 @@ public class RxFirebase {
         return Observable.create(new Observable.OnSubscribe<User>() {
             @Override
             public void call(final Subscriber<? super User> subscriber) {
-                final String firebaseId = firebaseAuthEvent.getFirebaseUid();
-                if (firebaseId == null) {
-                    // create new user
-                    Log.d("Dan", "creating new user");
-                    final Firebase usersRef = firebase.child(User.getParentRootPath());
-                    final Firebase userRef = usersRef.push();
-                    final String newUserId = userRef.getKey();
-                    User user = new User();
-                    user.setFirebaseId(newUserId);
-                    userRef.setValue(user);
-
-                    // update user mappings
-                    final AuthData authData = firebaseAuthEvent.getAuthData();
-                    final Firebase mappingsRef = firebase.child(UserMappings.getUserMappingsRoot() + authData.getProvider() + "/" + authData.getUid() );
-                    // setting the mapping will trigger an event upstream
-                    mappingsRef.setValue(newUserId);
-                    return;
-                }
-
-                String userPath = User.getParentRootPath() + firebaseId;
+                final String uid = firebaseAuthEvent.getAuthData().getUid();
+                final String userPath = User.getParentRootPath() + uid;
                 Log.d("Dan", "get firebase user at path: " + userPath);
                 final Firebase existingUserRef = firebase.child(userPath);
                 final ValueEventListener listener = existingUserRef.addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
+                        User user = null;
                         if (dataSnapshot == null || !dataSnapshot.exists()) {
-                            subscriber.onError(new RuntimeException("could not get existing user"));
+                            // create new user
+                            Log.d("Dan", "creating new user");
+                            final Firebase userRef = firebase.child(userPath);
+                            user = new User();
+                            user.setFacebookId(uid);
+                            userRef.setValue(user);
                         } else {
-                            //existing user
-                            Log.d("Dan", "found existing user");
-                            User user = dataSnapshot.getValue(User.class);
-                            subscriber.onNext(user);
+                            // existing user
+                            user = dataSnapshot.getValue(User.class);
+                            Log.d("Dan", "found existing user: " + user);
                         }
+                        subscriber.onNext(user);
                     }
 
                     @Override
@@ -152,10 +97,10 @@ public class RxFirebase {
         });
     }
 
-    public <T extends Object> Func1<FirebaseAuthEvent, Observable<T>> toFirebaseObject(final String childRef, final Class<T> clazz) {
-        return new Func1<FirebaseAuthEvent, Observable<T>>() {
+    public <T extends Object> Func1<Boolean, Observable<T>> toFirebaseObject(final String childRef, final Class<T> clazz) {
+        return new Func1<Boolean, Observable<T>>() {
             @Override
-            public Observable<T> call(FirebaseAuthEvent firebaseAuthEvent) {
+            public Observable<T> call(Boolean firebaseAuthEvent) {
                 return observeFirebaseObject(childRef, clazz);
             }
         };
@@ -169,7 +114,7 @@ public class RxFirebase {
                 final ValueEventListener listener = firebaseRef.addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
-                        Log.d("Dan", "found " + dataSnapshot.getChildrenCount() + " data items");
+                        Log.d("Dan", "data object updated");
                         //for (DataSnapshot snapshot: dataSnapshot.getChildren()) {
                         T object = (T) dataSnapshot.getValue(clazz);
                         //}

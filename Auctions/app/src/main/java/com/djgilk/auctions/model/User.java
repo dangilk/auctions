@@ -11,9 +11,6 @@ public class User {
     private String displayName;
     private String profileImageURL;
 
-    // auto assigned firebase value
-    private String firebaseId;
-
     // other values
     private int coins;
     private String address1;
@@ -41,6 +38,10 @@ public class User {
 
     public String getFacebookId() {
         return facebookId;
+    }
+
+    public void setFacebookId(String facebookId) {
+        this.facebookId = facebookId;
     }
 
     public String getDisplayName() {
@@ -73,14 +74,6 @@ public class User {
 
     public String getZip() {
         return zip;
-    }
-
-    public String getFirebaseId() {
-        return firebaseId;
-    }
-
-    public void setFirebaseId(String firebaseId) {
-        this.firebaseId = firebaseId;
     }
 
     public static String getParentRootPath() {

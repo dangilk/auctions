@@ -7,7 +7,6 @@ import com.firebase.client.AuthData;
  */
 public class FirebaseAuthEvent {
     final private AuthData authData;
-    private String firebaseUid;
 
     public FirebaseAuthEvent(AuthData authData) {
         this.authData = authData;
@@ -15,13 +14,5 @@ public class FirebaseAuthEvent {
 
     public AuthData getAuthData() {
         return authData;
-    }
-
-    public String getFirebaseUid() {
-        return firebaseUid;
-    }
-
-    public void setFirebaseUid(String firebaseUid) {
-        this.firebaseUid = firebaseUid;
     }
 }

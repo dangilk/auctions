@@ -33,7 +33,7 @@ public class RxPublisher {
     ConnectableObservable<ClientConfig> clientConfigObservable;
     ConnectableObservable<Boolean> observablesCompleteObservable;
     ConnectableObservable<User> userObservable;
-    ConnectableObservable<FirebaseAuthEvent> userMappingsObservable;
+    ConnectableObservable<Boolean> loginStateObservable;
 
     Set<ConnectableObservable<?>> connectableObservables = new HashSet<ConnectableObservable<?>>();
     Set<Subscription> subscriptions = new HashSet<Subscription>();
@@ -54,12 +54,13 @@ public class RxPublisher {
         // auth layer
         facebookAuthEventObservable = rxFacebook.observeFacebookAuth(activity, callbackManager).subscribeOn(Schedulers.io()).publish();
         firebaseAuthEventObservable = facebookAuthEventObservable.flatMap(rxFirebase.toFirebaseAuthEvent()).publish();
+        userObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseUser()).publish();
+        loginStateObservable = userObservable.flatMap(rxFirebase.toLoginState()).publish();
 
         // data layer
-        currentItemObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseObject(CurrentItem.getRootPath(), CurrentItem.class)).publish();
-        clientConfigObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).publish();
-        userMappingsObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseUserId()).publish();
-        userObservable = userMappingsObservable.flatMap(rxFirebase.toFirebaseUser()).publish();
+        currentItemObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(CurrentItem.getRootPath(), CurrentItem.class)).publish();
+        clientConfigObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).publish();
+
 
         // all complete
         observablesCompleteObservable = currentItemObservable.zipWith(clientConfigObservable, new RxHelper.ZipWaiter()).publish();
@@ -68,8 +69,8 @@ public class RxPublisher {
         connectableObservables.add(firebaseAuthEventObservable);
         connectableObservables.add(currentItemObservable);
         connectableObservables.add(clientConfigObservable);
-        connectableObservables.add(userMappingsObservable);
         connectableObservables.add(userObservable);
+        connectableObservables.add(loginStateObservable);
         connectableObservables.add(observablesCompleteObservable);
     }
 
