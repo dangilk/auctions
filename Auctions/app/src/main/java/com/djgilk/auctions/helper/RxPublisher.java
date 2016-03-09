@@ -18,10 +18,10 @@ import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import rx.Observable;
 import rx.Subscription;
 import rx.observables.ConnectableObservable;
 import rx.schedulers.Schedulers;
-
 /**
  * Created by dangilk on 3/3/16.
  */
@@ -32,8 +32,9 @@ public class RxPublisher {
     ConnectableObservable<CurrentItem> currentItemObservable;
     ConnectableObservable<ClientConfig> clientConfigObservable;
     ConnectableObservable<Boolean> observablesCompleteObservable;
-    ConnectableObservable<User> userObservable;
+    ConnectableObservable<User> userCreationObservable;
     ConnectableObservable<Boolean> loginStateObservable;
+    ConnectableObservable<User> userObservable;
 
     Set<ConnectableObservable<?>> connectableObservables = new HashSet<ConnectableObservable<?>>();
     Set<Subscription> subscriptions = new HashSet<Subscription>();
@@ -54,21 +55,22 @@ public class RxPublisher {
         // auth layer
         facebookAuthEventObservable = rxFacebook.observeFacebookAuth(activity, callbackManager).subscribeOn(Schedulers.io()).publish();
         firebaseAuthEventObservable = facebookAuthEventObservable.flatMap(rxFirebase.toFirebaseAuthEvent()).publish();
-        userObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseUser()).publish();
-        loginStateObservable = userObservable.flatMap(rxFirebase.toLoginState()).publish();
+        userCreationObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseUserCreation()).publish();
+        loginStateObservable = userCreationObservable.flatMap(rxFirebase.toLoginState()).publish();
 
         // data layer
         currentItemObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(CurrentItem.getRootPath(), CurrentItem.class)).publish();
         clientConfigObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).publish();
+        userObservable = userCreationObservable.flatMap(rxFirebase.toFirebaseUser()).publish();
 
-
-        // all complete
-        observablesCompleteObservable = currentItemObservable.zipWith(clientConfigObservable, new RxHelper.ZipWaiter()).publish();
+        // initialization complete
+        observablesCompleteObservable = Observable.zip(currentItemObservable, clientConfigObservable, userObservable, new RxHelper.ZipWaiter3()).publish();
 
         connectableObservables.add(facebookAuthEventObservable);
         connectableObservables.add(firebaseAuthEventObservable);
         connectableObservables.add(currentItemObservable);
         connectableObservables.add(clientConfigObservable);
+        connectableObservables.add(userCreationObservable);
         connectableObservables.add(userObservable);
         connectableObservables.add(loginStateObservable);
         connectableObservables.add(observablesCompleteObservable);
@@ -113,7 +115,7 @@ public class RxPublisher {
         return observablesCompleteObservable;
     }
 
-    public ConnectableObservable<User> getUserObservable() {
-        return userObservable;
+    public ConnectableObservable<User> getUserCreationObservable() {
+        return userCreationObservable;
     }
 }

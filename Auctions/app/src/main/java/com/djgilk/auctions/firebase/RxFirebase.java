@@ -42,16 +42,16 @@ public class RxFirebase {
         };
     }
 
-    public Func1<FirebaseAuthEvent, Observable<User>> toFirebaseUser() {
+    public Func1<FirebaseAuthEvent, Observable<User>> toFirebaseUserCreation() {
         return new Func1<FirebaseAuthEvent, Observable<User>>() {
             @Override
             public Observable<User> call(FirebaseAuthEvent firebaseAuthEvent) {
-                return observeFirebaseUser(firebaseAuthEvent);
+                return observeFirebaseUserCreation(firebaseAuthEvent);
             }
         };
     }
 
-    public Observable<User> observeFirebaseUser(final FirebaseAuthEvent firebaseAuthEvent) {
+    public Observable<User> observeFirebaseUserCreation(final FirebaseAuthEvent firebaseAuthEvent) {
         return Observable.create(new Observable.OnSubscribe<User>() {
             @Override
             public void call(final Subscriber<? super User> subscriber) {
@@ -75,6 +75,7 @@ public class RxFirebase {
                             user = dataSnapshot.getValue(User.class);
                             Log.d("Dan", "found existing user: " + user);
                         }
+                        existingUserRef.removeEventListener(this);
                         subscriber.onNext(user);
                     }
 
@@ -95,6 +96,15 @@ public class RxFirebase {
                 }));
             }
         });
+    }
+
+    public Func1<User, Observable<User>> toFirebaseUser() {
+        return new Func1<User, Observable<User>>() {
+            @Override
+            public Observable<User> call(User user) {
+                return observeFirebaseObject(User.getParentRootPath() + user.getFacebookId(), User.class);
+            }
+        };
     }
 
     public <T extends Object> Func1<Boolean, Observable<T>> toFirebaseObject(final String childRef, final Class<T> clazz) {
