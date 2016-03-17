@@ -1,7 +1,6 @@
 package com.djgilk.auctions.facebook;
 
 import android.app.Activity;
-import android.util.Log;
 
 import com.facebook.AccessToken;
 import com.facebook.AccessTokenTracker;
@@ -21,6 +20,7 @@ import rx.Observable;
 import rx.Subscriber;
 import rx.functions.Action0;
 import rx.subscriptions.Subscriptions;
+import timber.log.Timber;
 
 /**
  * Created by dangilk on 2/26/16.
@@ -41,7 +41,7 @@ public class RxFacebook {
                 loginManager.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
                     @Override
                     public void onSuccess(LoginResult loginResult) {
-                        Log.i("Dan", "facebook authed");
+                        Timber.d("facebook authed");
                         //subscriber.onNext(new FacebookAuthEvent(loginResult.getAccessToken()));
                     }
 
@@ -57,13 +57,13 @@ public class RxFacebook {
                 });
 
                 if (accessTokenTracker == null) {
-                    Log.d("Dan", "start tracking facebook data");
+                    Timber.d("start tracking facebook data");
                     accessTokenTracker = new AccessTokenTracker() {
                         @Override
                         protected void onCurrentAccessTokenChanged(
                                 AccessToken oldAccessToken,
                                 AccessToken currentAccessToken) {
-                            Log.d("Dan", "access token changed: " + currentAccessToken.getToken());
+                            Timber.d("access token changed: " + currentAccessToken.getToken());
 
                             subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
                         }
@@ -76,7 +76,7 @@ public class RxFacebook {
                 if (currentAccessToken == null || currentAccessToken.isExpired()) {
                     loginManager.logInWithReadPermissions(activity, permissions);
                 } else {
-                    Log.d("Dan", "facebook access token: " + currentAccessToken.getToken());
+                    Timber.d("facebook access token: " + currentAccessToken.getToken());
                     subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
                 }
 
@@ -84,7 +84,7 @@ public class RxFacebook {
                 subscriber.add(Subscriptions.create(new Action0() {
                     @Override
                     public void call() {
-                        Log.d("Dan", "stop tracking facebook data");
+                        Timber.d("stop tracking facebook data");
                         accessTokenTracker.stopTracking();
                     }
                 }));

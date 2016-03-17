@@ -6,6 +6,8 @@ import com.djgilk.auctions.injection.DaggerMainComponent;
 import com.djgilk.auctions.injection.MainComponent;
 import com.djgilk.auctions.injection.MainModule;
 
+import timber.log.Timber;
+
 /**
  * Created by dangilk on 2/25/16.
  */
@@ -16,6 +18,10 @@ public class MainApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        if (BuildConfig.DEBUG) {
+            Timber.plant(new Timber.DebugTree());
+        }
 
         // Dagger%COMPONENT_NAME%
         mainComponent = DaggerMainComponent.builder()

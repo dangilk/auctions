@@ -1,7 +1,5 @@
 package com.djgilk.auctions.firebase;
 
-import android.util.Log;
-
 import com.djgilk.auctions.facebook.FacebookAuthEvent;
 import com.djgilk.auctions.model.User;
 import com.firebase.client.AuthData;
@@ -19,6 +17,7 @@ import rx.Subscriber;
 import rx.functions.Action0;
 import rx.functions.Func1;
 import rx.subscriptions.Subscriptions;
+import timber.log.Timber;
 
 /**
  * Created by dangilk on 2/26/16.
@@ -36,7 +35,7 @@ public class RxFirebase {
         return new Func1<User, Observable<Boolean>>() {
             @Override
             public Observable<Boolean> call(User user) {
-                Log.d("Dan", "login flow complete: user = " + user);
+                Timber.d("login flow complete: user = " + user);
                 return Observable.just(user != null);
             }
         };
@@ -57,7 +56,7 @@ public class RxFirebase {
             public void call(final Subscriber<? super User> subscriber) {
                 final String uid = firebaseAuthEvent.getAuthData().getUid();
                 final String userPath = User.getParentRootPath() + uid;
-                Log.d("Dan", "get firebase user at path: " + userPath);
+                Timber.d("get firebase user at path: " + userPath);
                 final Firebase existingUserRef = firebase.child(userPath);
                 final ValueEventListener listener = existingUserRef.addValueEventListener(new ValueEventListener() {
                     @Override
@@ -65,7 +64,7 @@ public class RxFirebase {
                         User user = null;
                         if (dataSnapshot == null || !dataSnapshot.exists()) {
                             // create new user
-                            Log.d("Dan", "creating new user");
+                            Timber.d("creating new user");
                             final Firebase userRef = firebase.child(userPath);
                             user = new User();
                             user.setFacebookId(uid);
@@ -73,7 +72,7 @@ public class RxFirebase {
                         } else {
                             // existing user
                             user = dataSnapshot.getValue(User.class);
-                            Log.d("Dan", "found existing user: " + user);
+                            Timber.d("found existing user: " + user);
                         }
                         existingUserRef.removeEventListener(this);
                         subscriber.onNext(user);
@@ -81,7 +80,7 @@ public class RxFirebase {
 
                     @Override
                     public void onCancelled(FirebaseError error) {
-                        Log.d("Dan", "firebase error getting user");
+                        Timber.d("firebase error getting user");
                         // Turn the FirebaseError into a throwable to conform to the API
                         subscriber.onError(new FirebaseException(error.getMessage()));
                     }
@@ -124,7 +123,7 @@ public class RxFirebase {
                 final ValueEventListener listener = firebaseRef.addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
-                        Log.d("Dan", "data object updated");
+                        Timber.d("data object updated");
                         //for (DataSnapshot snapshot: dataSnapshot.getChildren()) {
                         T object = (T) dataSnapshot.getValue(clazz);
                         //}
@@ -133,7 +132,7 @@ public class RxFirebase {
 
                     @Override
                     public void onCancelled(FirebaseError error) {
-                        Log.d("Dan", "firebase error getting object");
+                        Timber.d("firebase error getting object");
                         // Turn the FirebaseError into a throwable to conform to the API
                         subscriber.onError(new FirebaseException(error.getMessage()));
                     }
@@ -166,33 +165,34 @@ public class RxFirebase {
                 final Firebase.AuthStateListener authStateListener = new Firebase.AuthStateListener() {
                     @Override
                     public void onAuthStateChanged(AuthData authData) {
+                        Timber.d("firebase auth state updated");
                         if (authData == null) {
-                            Log.d("Dan", "firebase not authed");
+                            Timber.d("firebase not authed");
                             // firebase not authed
                             if (facebookAuthEvent.isLoggedIn()) {
-                                Log.d("Dan", "facebook is logged in");
+                                Timber.d("facebook is logged in");
                                 firebase.authWithOAuthToken("facebook", facebookAuthEvent.getAccessToken().getToken(), new Firebase.AuthResultHandler() {
                                     @Override
                                     public void onAuthenticated(AuthData authData) {
                                         // no op, process auth in else clause below
-                                        Log.d("Dan", "firebase newly authed");
+                                        Timber.d("firebase newly authed");
                                     }
 
                                     @Override
                                     public void onAuthenticationError(FirebaseError firebaseError) {
-                                        Log.w("Dan", "firebase auth error");
+                                        Timber.w("firebase auth error");
                                         subscriber.onError(firebaseError.toException());
                                     }
                                 });
                             } else {
-                                Log.w("Dan", "no facebook or firebase auth - error");
+                                Timber.w("no facebook or firebase auth - error");
                                 firebase.unauth();
                             }
                         } else {
                             // firebase already authed
-                            Log.i("Dan", "firebase already authed. uid = " + authData.getUid());
+                            Timber.d("firebase already authed. uid = " + authData.getUid());
                             for (String value : authData.getProviderData().keySet()) {
-                                //Log.i("Dan", "fb key: " + value);
+                                //Timber.d("fb key: " + value);
                             }
                             final String uid = authData.getUid();
                             //final User user = firebase.
@@ -207,7 +207,7 @@ public class RxFirebase {
                 subscriber.add(Subscriptions.create(new Action0() {
                     @Override
                     public void call() {
-                        Log.d("Dan", "removing firebase auth listener");
+                        Timber.d("removing firebase auth listener");
                         firebase.removeAuthStateListener(authStateListener);
                     }
                 }));

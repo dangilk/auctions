@@ -3,7 +3,6 @@ package com.djgilk.auctions;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -17,6 +16,7 @@ import javax.inject.Inject;
 
 import rx.Observer;
 import rx.android.schedulers.AndroidSchedulers;
+import timber.log.Timber;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -51,17 +51,17 @@ public class MainActivity extends AppCompatActivity {
                 .subscribe(new Observer<Object>() {
                     @Override
                     public void onCompleted() {
-                        Log.i("Dan", "layout transition onCompleted");
+                        Timber.i("layout transition onCompleted");
                     }
 
                     @Override
                     public void onError(Throwable e) {
-                        Log.i("Dan", "layout transition onError: " + e.getMessage());
+                        Timber.i("layout transition onError: " + e.getMessage());
                     }
 
                     @Override
                     public void onNext(Object aBoolean) {
-                        Log.i("Dan", "layout transition onNext");
+                        Timber.i("layout transition onNext");
                     }
                 });
         rxPublisher.connect();
