@@ -31,6 +31,49 @@ public class RxFirebase {
     @Inject
     public RxFirebase(){}
 
+
+    public Func1<Boolean, Observable<Long>> toFirebaseClockOffset() {
+        return new Func1<Boolean, Observable<Long>>() {
+            @Override
+            public Observable<Long> call(Boolean b) {
+                return observeFirebaseClockOffset();
+            }
+        };
+    }
+
+    public Observable<Long> observeFirebaseClockOffset() {
+        return Observable.create(new Observable.OnSubscribe<Long>() {
+            @Override
+            public void call(final Subscriber<? super Long> subscriber) {
+                Timber.d("get firebase time offset");
+                final Firebase infoRef = firebase.child(".info/serverTimeOffset");
+                final ValueEventListener listener = infoRef.addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        Long clockOffset = (Long) dataSnapshot.getValue();
+                        Timber.d("clock offset was updated: " + clockOffset);
+                        subscriber.onNext(clockOffset);
+                    }
+
+                    @Override
+                    public void onCancelled(FirebaseError error) {
+                        Timber.d("firebase error getting clock offset");
+                        // Turn the FirebaseError into a throwable to conform to the API
+                        subscriber.onError(new FirebaseException(error.getMessage()));
+                    }
+                });
+
+                // When the subscription is cancelled, remove the listener
+                subscriber.add(Subscriptions.create(new Action0() {
+                    @Override
+                    public void call() {
+                        infoRef.removeEventListener(listener);
+                    }
+                }));
+            }
+        });
+    }
+
     public Func1<User, Observable<Boolean>> toLoginState() {
         return new Func1<User, Observable<Boolean>>() {
             @Override

@@ -35,6 +35,7 @@ public class RxPublisher {
     ConnectableObservable<User> userCreationObservable;
     ConnectableObservable<Boolean> loginStateObservable;
     ConnectableObservable<User> userObservable;
+    ConnectableObservable<Long> clockOffsetObservable;
 
     Set<ConnectableObservable<?>> connectableObservables = new HashSet<ConnectableObservable<?>>();
     Set<Subscription> subscriptions = new HashSet<Subscription>();
@@ -59,6 +60,7 @@ public class RxPublisher {
         loginStateObservable = userCreationObservable.flatMap(rxFirebase.toLoginState()).publish();
 
         // data layer
+        clockOffsetObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseClockOffset()).publish();
         currentItemObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(CurrentItem.getRootPath(), CurrentItem.class)).publish();
         clientConfigObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).publish();
         userObservable = userCreationObservable.flatMap(rxFirebase.toFirebaseUser()).publish();
@@ -74,6 +76,7 @@ public class RxPublisher {
         connectableObservables.add(userObservable);
         connectableObservables.add(loginStateObservable);
         connectableObservables.add(observablesCompleteObservable);
+        connectableObservables.add(clockOffsetObservable);
     }
 
     public void connect() {
@@ -117,5 +120,13 @@ public class RxPublisher {
 
     public ConnectableObservable<User> getUserCreationObservable() {
         return userCreationObservable;
+    }
+
+    public ConnectableObservable<User> getUserObservable() {
+        return userObservable;
+    }
+
+    public ConnectableObservable<Long> getClockOffsetObservable() {
+        return clockOffsetObservable;
     }
 }

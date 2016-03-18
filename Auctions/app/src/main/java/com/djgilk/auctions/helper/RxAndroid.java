@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.djgilk.auctions.presenter.ViewPresenter;
 
@@ -57,6 +58,22 @@ public class RxAndroid {
         @Override
         public Observable<Boolean> call(Bitmap bitmap) {
             imageView.setImageBitmap(bitmap);
+            return Observable.just(true);
+        }
+    }
+
+    public static class ToUpdatedTextView implements Func1<Object, Observable<Boolean>> {
+        final TextView textView;
+        final String text;
+
+        public ToUpdatedTextView(TextView textView, String text) {
+            this.textView = textView;
+            this.text = text;
+        }
+
+        @Override
+        public Observable<Boolean> call(Object o) {
+            textView.setText(String.valueOf(text));
             return Observable.just(true);
         }
     }
