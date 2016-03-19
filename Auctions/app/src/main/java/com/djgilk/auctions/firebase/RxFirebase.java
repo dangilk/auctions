@@ -205,6 +205,7 @@ public class RxFirebase {
         return Observable.create(new Observable.OnSubscribe<FirebaseAuthEvent>() {
             @Override
             public void call(final Subscriber<? super FirebaseAuthEvent> subscriber) {
+                Timber.d("call firebase observable");
                 final Firebase.AuthStateListener authStateListener = new Firebase.AuthStateListener() {
                     @Override
                     public void onAuthStateChanged(AuthData authData) {
@@ -244,6 +245,7 @@ public class RxFirebase {
                     }
                 };
 
+                Timber.d("adding firebase auth state listener");
                 firebase.addAuthStateListener(authStateListener);
 
                 // When the subscription is cancelled, remove the listener
