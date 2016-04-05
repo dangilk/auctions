@@ -1,5 +1,10 @@
 package com.djgilk.auctions.model;
 
+import com.djgilk.auctions.firebase.RxFirebase;
+
+import rx.Observable;
+import rx.functions.Func1;
+
 /**
  * Created by dangilk on 2/27/16.
  */
@@ -9,10 +14,6 @@ public class CurrentItem {
     private String imageUrl;
     private int price;
     private long auctionEndTimeMillis;
-
-    public static String getRootPath() {
-        return "sharedState/currentItem";
-    }
 
     public String getName() {
         return name;
@@ -32,5 +33,15 @@ public class CurrentItem {
 
     public long getAuctionEndTimeMillis() {
         return auctionEndTimeMillis;
+    }
+
+    public static Func1<AuctionState, Observable<CurrentItem>> fromAuctionState(final RxFirebase rxFirebase) {
+        return new Func1<AuctionState, Observable<CurrentItem>>() {
+            @Override
+            public Observable<CurrentItem> call(AuctionState auctionState) {
+                final String itemPath = "items/" + auctionState.getAuctionItemId();
+                return rxFirebase.observeFirebaseObject(itemPath, CurrentItem.class);
+            }
+        };
     }
 }

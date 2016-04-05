@@ -62,6 +62,9 @@ public class AuctionPresenter extends ViewPresenter {
     @Bind(R.id.tv_auctionTimeLeftUnits)
     TextView tvAuctionTimeLeftUnits;
 
+    @Bind(R.id.tv_yourBid)
+    TextView tvYourBid;
+
     @Inject
     public AuctionPresenter(){};
 
@@ -77,6 +80,8 @@ public class AuctionPresenter extends ViewPresenter {
                         rxPublisher.getCurrentItemObservable(),
                         new OffsetClock())
                         .observeOn(AndroidSchedulers.mainThread()).subscribe(new UpdateClock()));
+        compositeSubscription.add(rxPublisher.getAggregateBidObservable().subscribe(new UpdateMyBids()));
+
     }
 
     @Override
@@ -122,6 +127,13 @@ public class AuctionPresenter extends ViewPresenter {
         @Override
         public void call(PrettyTime prettyTime) {
             prettyTime.setText(tvAuctionTimeLeft, tvAuctionTimeLeftUnits);
+        }
+    }
+
+    public class UpdateMyBids implements Action1<Long> {
+        @Override
+        public void call(Long myBid) {
+            tvYourBid.setText(String.valueOf(myBid));
         }
     }
 

@@ -7,10 +7,13 @@ import com.djgilk.auctions.facebook.FacebookAuthEvent;
 import com.djgilk.auctions.facebook.RxFacebook;
 import com.djgilk.auctions.firebase.FirebaseAuthEvent;
 import com.djgilk.auctions.firebase.RxFirebase;
+import com.djgilk.auctions.model.AuctionState;
+import com.djgilk.auctions.model.Bid;
 import com.djgilk.auctions.model.ClientConfig;
 import com.djgilk.auctions.model.CurrentItem;
 import com.djgilk.auctions.model.User;
 import com.facebook.CallbackManager;
+import com.firebase.client.Firebase;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -36,6 +39,8 @@ public class RxPublisher {
     ConnectableObservable<Boolean> loginStateObservable;
     ConnectableObservable<User> userObservable;
     ConnectableObservable<Long> clockOffsetObservable;
+    ConnectableObservable<AuctionState> auctionStateObservable;
+    ConnectableObservable<Long> aggregateBidObservable;
 
     Set<ConnectableObservable<?>> connectableObservables = new HashSet<ConnectableObservable<?>>();
     Set<Subscription> subscriptions = new HashSet<Subscription>();
@@ -45,6 +50,9 @@ public class RxPublisher {
 
     @Inject
     RxFacebook rxFacebook;
+
+    @Inject
+    Firebase firebase;
 
     @Inject
     CallbackManager callbackManager;
@@ -60,10 +68,12 @@ public class RxPublisher {
         loginStateObservable = userCreationObservable.flatMap(rxFirebase.toLoginState()).publish();
 
         // data layer
+        auctionStateObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(AuctionState.getRootPath(), AuctionState.class)).publish();
         clockOffsetObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseClockOffset()).publish();
-        currentItemObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(CurrentItem.getRootPath(), CurrentItem.class)).publish();
+        currentItemObservable = auctionStateObservable.flatMap(CurrentItem.fromAuctionState(rxFirebase)).publish();
         clientConfigObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).publish();
         userObservable = userCreationObservable.flatMap(rxFirebase.toFirebaseUser()).publish();
+        aggregateBidObservable = Observable.concat(Observable.combineLatest(auctionStateObservable, userObservable, Bid.observeAggregateBids(firebase))).publish();
 
         // initialization complete
         observablesCompleteObservable = Observable.zip(currentItemObservable, clientConfigObservable, userObservable, new RxHelper.ZipWaiter3()).publish();
@@ -77,6 +87,8 @@ public class RxPublisher {
         connectableObservables.add(loginStateObservable);
         connectableObservables.add(observablesCompleteObservable);
         connectableObservables.add(clockOffsetObservable);
+        connectableObservables.add(auctionStateObservable);
+        connectableObservables.add(aggregateBidObservable);
     }
 
     public void connect() {
@@ -122,11 +134,19 @@ public class RxPublisher {
         return userCreationObservable;
     }
 
+    public ConnectableObservable<AuctionState> getAuctionStateObservable() {
+        return auctionStateObservable;
+    }
+
     public ConnectableObservable<User> getUserObservable() {
         return userObservable;
     }
 
     public ConnectableObservable<Long> getClockOffsetObservable() {
         return clockOffsetObservable;
+    }
+
+    public ConnectableObservable<Long> getAggregateBidObservable() {
+        return aggregateBidObservable;
     }
 }
