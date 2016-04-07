@@ -23,6 +23,7 @@ import rx.Observable;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 import rx.functions.Func1;
+import rx.functions.Func2;
 import rx.functions.Func3;
 import rx.schedulers.Schedulers;
 import rx.subscriptions.CompositeSubscription;
@@ -65,6 +66,9 @@ public class AuctionPresenter extends ViewPresenter {
     @Bind(R.id.tv_yourBid)
     TextView tvYourBid;
 
+    @Bind(R.id.tv_bidIncrement)
+    TextView tvBidIncrement;
+
     @Inject
     public AuctionPresenter(){};
 
@@ -81,6 +85,11 @@ public class AuctionPresenter extends ViewPresenter {
                         new OffsetClock())
                         .observeOn(AndroidSchedulers.mainThread()).subscribe(new UpdateClock()));
         compositeSubscription.add(rxPublisher.getAggregateBidObservable().subscribe(new UpdateMyBids()));
+        compositeSubscription.add(
+                Observable.combineLatest(rxPublisher.getAggregateBidObservable(),
+                        rxPublisher.getCurrentItemObservable(),
+                        toIncrementalBid())
+                        .subscribe(new UpdateIncrementalBid()));
 
     }
 
@@ -112,7 +121,7 @@ public class AuctionPresenter extends ViewPresenter {
             return RxAndroid.observeBitmap(currentItem.getImageUrl()).subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread()).flatMap(new RxAndroid.ToLoadedImageView(ivAuctionImage))
                     .flatMap(new RxAndroid.ToUpdatedTextView(tvAuctionTitle, currentItem.getName()))
-                    .flatMap(new RxAndroid.ToUpdatedTextView(tvHighBid, currentItem.getHighBid()));
+                    .flatMap(new RxAndroid.ToUpdatedTextView(tvHighBid, String.valueOf(currentItem.getHighBid())));
         }
     }
 
@@ -135,6 +144,29 @@ public class AuctionPresenter extends ViewPresenter {
         public void call(Long myBid) {
             tvYourBid.setText(String.valueOf(myBid));
         }
+    }
+
+    public class UpdateIncrementalBid implements Action1<Long> {
+        @Override
+        public void call(Long bid) {
+            tvBidIncrement.setText(String.valueOf(bid));
+        }
+    }
+
+
+    public Func2<Long, CurrentItem, Long> toIncrementalBid() {
+        return new Func2<Long, CurrentItem, Long>() {
+            @Override
+            public Long call(Long myBid, CurrentItem currentItem) {
+                final int highBid = currentItem.getHighBid();
+                if (highBid <= 0) {
+                    return Long.valueOf(1);
+                } else if (myBid < highBid) {
+                    return Long.valueOf(highBid - myBid + 1);
+                }
+                return Long.valueOf(1);
+            }
+        };
     }
 
 }

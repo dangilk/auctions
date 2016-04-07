@@ -10,7 +10,7 @@ import rx.functions.Func1;
  */
 public class CurrentItem {
     private String name;
-    private String highBid;
+    private int highBid;
     private String imageUrl;
     private int price;
     private long auctionEndTimeMillis;
@@ -27,7 +27,7 @@ public class CurrentItem {
         return price;
     }
 
-    public String getHighBid() {
+    public int getHighBid() {
         return highBid;
     }
 

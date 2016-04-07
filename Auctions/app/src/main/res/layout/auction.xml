@@ -146,7 +146,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="5"
+            android:text=""
             android:textColor="#FFFFFF"
             android:paddingLeft="5dp"
             android:id="@+id/tv_bidIncrement"

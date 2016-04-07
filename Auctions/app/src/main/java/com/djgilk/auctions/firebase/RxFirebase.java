@@ -202,10 +202,11 @@ public class RxFirebase {
     }
 
     private Observable<FirebaseAuthEvent> observeFirebaseAuth(final FacebookAuthEvent facebookAuthEvent) {
+        Timber.d("call observeFirebaseAuth()");
         return Observable.create(new Observable.OnSubscribe<FirebaseAuthEvent>() {
             @Override
             public void call(final Subscriber<? super FirebaseAuthEvent> subscriber) {
-                Timber.d("call firebase observable");
+                Timber.d("create firebase observable");
                 final Firebase.AuthStateListener authStateListener = new Firebase.AuthStateListener() {
                     @Override
                     public void onAuthStateChanged(AuthData authData) {
