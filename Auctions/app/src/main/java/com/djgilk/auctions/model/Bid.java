@@ -17,15 +17,22 @@ import timber.log.Timber;
  * Created by dangilk on 3/20/16.
  */
 public class Bid {
-    private long timestamp;
+    //private long timestamp;
     private long coins;
+    //private Map<String, String> firebaseTimestamp;
 
-    public long getTimestamp() {
-        return timestamp;
+    public Bid() {}
+
+    public Bid(long coins) {
+        this.coins = coins;
     }
 
     public long getCoins() {
         return coins;
+    }
+
+    public static String getParentRootPath() {
+        return "bids";
     }
 
     public static Func2<AuctionState, User, Observable<Long>> observeAggregateBids(final Firebase firebase) {
@@ -41,7 +48,7 @@ public class Bid {
         return Observable.create(new Observable.OnSubscribe<Long>() {
             @Override
             public void call(final Subscriber<? super Long> subscriber) {
-                final Firebase firebaseRef = firebase.child("bids/" + itemId + "/" + userId);
+                final Firebase firebaseRef = firebase.child(getParentRootPath() + "/" + itemId + "/" + userId);
                 final ValueEventListener listener = firebaseRef.addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {

@@ -56,6 +56,14 @@ public class User {
         return coins;
     }
 
+    public void deductCoins(int coins) {
+        if (this.coins >= coins) {
+            this.coins -= coins;
+        } else {
+            this.coins = 0;
+        }
+    }
+
     public String getAddress1() {
         return address1;
     }
@@ -80,4 +88,45 @@ public class User {
         return "users/";
     }
 
+    @Override
+    public String toString() {
+        return "User{coins: "+coins+", id: "+facebookId+"}";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        User user = (User) o;
+
+        if (coins != user.coins) return false;
+        if (!facebookId.equals(user.facebookId)) return false;
+        if (displayName != null ? !displayName.equals(user.displayName) : user.displayName != null)
+            return false;
+        if (profileImageURL != null ? !profileImageURL.equals(user.profileImageURL) : user.profileImageURL != null)
+            return false;
+        if (address1 != null ? !address1.equals(user.address1) : user.address1 != null)
+            return false;
+        if (address2 != null ? !address2.equals(user.address2) : user.address2 != null)
+            return false;
+        if (city != null ? !city.equals(user.city) : user.city != null) return false;
+        if (state != null ? !state.equals(user.state) : user.state != null) return false;
+        return !(zip != null ? !zip.equals(user.zip) : user.zip != null);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = facebookId.hashCode();
+        result = 31 * result + (displayName != null ? displayName.hashCode() : 0);
+        result = 31 * result + (profileImageURL != null ? profileImageURL.hashCode() : 0);
+        result = 31 * result + coins;
+        result = 31 * result + (address1 != null ? address1.hashCode() : 0);
+        result = 31 * result + (address2 != null ? address2.hashCode() : 0);
+        result = 31 * result + (city != null ? city.hashCode() : 0);
+        result = 31 * result + (state != null ? state.hashCode() : 0);
+        result = 31 * result + (zip != null ? zip.hashCode() : 0);
+        return result;
+    }
 }

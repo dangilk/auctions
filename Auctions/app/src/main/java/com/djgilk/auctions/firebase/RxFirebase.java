@@ -7,6 +7,8 @@ import com.firebase.client.DataSnapshot;
 import com.firebase.client.Firebase;
 import com.firebase.client.FirebaseError;
 import com.firebase.client.FirebaseException;
+import com.firebase.client.MutableData;
+import com.firebase.client.Transaction;
 import com.firebase.client.ValueEventListener;
 
 import javax.inject.Inject;
@@ -166,10 +168,11 @@ public class RxFirebase {
                 final ValueEventListener listener = firebaseRef.addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
-                        Timber.d("data object updated");
+
                         //for (DataSnapshot snapshot: dataSnapshot.getChildren()) {
                         T object = (T) dataSnapshot.getValue(clazz);
                         //}
+                        Timber.d("data object updated: " + object);
                         subscriber.onNext(object);
                     }
 
@@ -185,7 +188,102 @@ public class RxFirebase {
                 subscriber.add(Subscriptions.create(new Action0() {
                     @Override
                     public void call() {
+                        Timber.d("REMOVE FIREBASE LISTENER");
                         firebaseRef.removeEventListener(listener);
+                    }
+                }));
+            }
+        });
+    }
+
+    public <T extends Object> Func1<T, Observable<Boolean>> toObservableFirebaseObjectIncrementTransaction(final String childRef) {
+        Timber.d("create transaction function");
+        return new Func1<T, Observable<Boolean>>() {
+            @Override
+            public Observable<Boolean> call(T ignored) {
+                Timber.d("call transaction function");
+                return observableFirebaseObjectIncrementTransaction(childRef);
+            }
+        };
+    }
+
+    public Observable<Boolean> observableFirebaseObjectIncrementTransaction(final String childRef) {
+        Timber.d("create transaction observable");
+        return Observable.create(new Observable.OnSubscribe<Boolean>() {
+            @Override
+            public void call(final Subscriber<? super Boolean> subscriber) {
+                Timber.d("call transaction observable: " + childRef);
+                final Firebase firebaseRef = firebase.child(childRef);
+                firebaseRef.runTransaction(new Transaction.Handler() {
+                    @Override
+                    public Transaction.Result doTransaction(MutableData currentData) {
+                        if (currentData.getValue() == null) {
+                            currentData.setValue(1);
+                        } else {
+                            Timber.d("transaction value: " + currentData.getValue());
+                            currentData.setValue((Long) currentData.getValue() + 1);
+                        }
+                        return Transaction.success(currentData); //we can also abort by calling Transaction.abort()
+                    }
+
+                    @Override
+                    public void onComplete(FirebaseError firebaseError, boolean committed, DataSnapshot currentData) {
+                        if (firebaseError != null) {
+                            Timber.e("transaction failed. " + firebaseError.getMessage());
+                            subscriber.onError(new FirebaseException(firebaseError.getMessage()));
+                        } else {
+                            Timber.d("transaction successful.");
+                            subscriber.onNext(true);
+                            subscriber.onCompleted();
+                        }
+                    }
+                });
+            };
+        });
+    }
+
+    public <T extends Object> Func1<Object, Observable<T>> toUpdatedFirebaseObject(final T object, final String childRef, final boolean isPush) {
+        return new Func1<Object, Observable<T>>() {
+            @Override
+            public Observable<T> call(Object ignored) {
+                Timber.d("call toUpdatedFirebaseObject");
+                return observableFirebaseObjectUpdate(object, childRef, isPush);
+            }
+        };
+    }
+
+    public <T extends Object> Observable<T> observableFirebaseObjectUpdate(final T object, final String childRef, final boolean isPush) {
+        Timber.d("create new observableFirebaseObjectUpdate observable");
+        return Observable.create(new Observable.OnSubscribe<T>() {
+            @Override
+            public void call(final Subscriber<? super T> subscriber) {
+                Timber.d("Observe firebase object update");
+                final Firebase firebaseRef = firebase.child(childRef);
+                final Firebase.CompletionListener listener = new Firebase.CompletionListener() {
+                    @Override
+                    public void onComplete(FirebaseError firebaseError, Firebase firebase) {
+                        if (firebaseError != null) {
+                            Timber.e("Data could not be saved. " + firebaseError.getMessage());
+                            subscriber.onError(new FirebaseException(firebaseError.getMessage()));
+                        } else {
+                            Timber.d("Data saved successfully.");
+                            subscriber.onNext(object);
+                            subscriber.onCompleted();
+                        }
+                    }
+                };
+
+                if (isPush) {
+                    firebaseRef.push().setValue(object, listener);
+                } else {
+                    firebaseRef.setValue(object, listener);
+                }
+
+                // When the subscription is cancelled, remove the listener
+                subscriber.add(Subscriptions.create(new Action0() {
+                    @Override
+                    public void call() {
+                        //firebaseRef.removeEventListener(listener);
                     }
                 }));
             }

@@ -35,13 +35,26 @@ public class CurrentItem {
         return auctionEndTimeMillis;
     }
 
+    public static String getParentRootPath() {
+        return "items";
+    }
+
+    public static String getHighBidKey() {
+        return "highBid";
+    }
+
     public static Func1<AuctionState, Observable<CurrentItem>> fromAuctionState(final RxFirebase rxFirebase) {
         return new Func1<AuctionState, Observable<CurrentItem>>() {
             @Override
             public Observable<CurrentItem> call(AuctionState auctionState) {
-                final String itemPath = "items/" + auctionState.getAuctionItemId();
+                final String itemPath = getParentRootPath() + "/" + auctionState.getAuctionItemId();
                 return rxFirebase.observeFirebaseObject(itemPath, CurrentItem.class);
             }
         };
+    }
+
+    @Override
+    public String toString() {
+        return "CurrentItem {highBid: "+highBid+"}";
     }
 }

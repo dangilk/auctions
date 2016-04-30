@@ -9,10 +9,14 @@ import android.widget.TextView;
 import com.djgilk.auctions.R;
 import com.djgilk.auctions.firebase.RxFirebase;
 import com.djgilk.auctions.helper.RxAndroid;
+import com.djgilk.auctions.helper.RxHelper;
 import com.djgilk.auctions.helper.RxPublisher;
+import com.djgilk.auctions.model.AuctionState;
+import com.djgilk.auctions.model.Bid;
 import com.djgilk.auctions.model.CurrentItem;
 import com.djgilk.auctions.model.PrettyTime;
 import com.djgilk.auctions.model.User;
+import com.jakewharton.rxbinding.view.RxView;
 
 import java.util.concurrent.TimeUnit;
 
@@ -25,9 +29,10 @@ import rx.functions.Action1;
 import rx.functions.Func1;
 import rx.functions.Func2;
 import rx.functions.Func3;
+import rx.observables.ConnectableObservable;
 import rx.schedulers.Schedulers;
 import rx.subscriptions.CompositeSubscription;
-
+import timber.log.Timber;
 /**
  * Created by dangilk on 2/27/16.
  */
@@ -69,15 +74,18 @@ public class AuctionPresenter extends ViewPresenter {
     @Bind(R.id.tv_bidIncrement)
     TextView tvBidIncrement;
 
+    @Bind(R.id.bt_bid)
+    LinearLayout bidButton;
+
     @Inject
     public AuctionPresenter(){};
 
     public void onCreate(Activity activity) {
         super.onCreate(activity);
-        compositeSubscription.add(rxPublisher.getCurrentItemObservable().observeOn(Schedulers.io())
+        compositeSubscription.add(rxPublisher.getCurrentItemObservable().doOnNext(new RxHelper.Log<CurrentItem>()).observeOn(Schedulers.io())
                 .flatMap(new LoadedCurrentItem()).subscribe());
         compositeSubscription.add(rxPublisher.getClientConfigObservable().subscribe());
-        compositeSubscription.add(rxPublisher.getUserObservable().subscribe(new UpdateUser()));
+        compositeSubscription.add(rxPublisher.getUserObservable().doOnNext(new RxHelper.Log<User>()).flatMap(new UpdateUser()).subscribe());
         compositeSubscription.add(
                 Observable.combineLatest(rxPublisher.getClockOffsetObservable(),
                         Observable.interval(1, TimeUnit.SECONDS),
@@ -85,12 +93,34 @@ public class AuctionPresenter extends ViewPresenter {
                         new OffsetClock())
                         .observeOn(AndroidSchedulers.mainThread()).subscribe(new UpdateClock()));
         compositeSubscription.add(rxPublisher.getAggregateBidObservable().subscribe(new UpdateMyBids()));
-        compositeSubscription.add(
+        // calculate incremental bid
+        final ConnectableObservable<Long> incrementalBidObservable =
                 Observable.combineLatest(rxPublisher.getAggregateBidObservable(),
-                        rxPublisher.getCurrentItemObservable(),
-                        toIncrementalBid())
-                        .subscribe(new UpdateIncrementalBid()));
+                    rxPublisher.getCurrentItemObservable(),
+                    toIncrementalBid()).publish();
 
+        final ConnectableObservable<Long> deductCoinsObservable = Observable.concat(
+                RxHelper.withLatestFrom(RxView.clicks(bidButton), rxPublisher.getUserObservable(),
+                        incrementalBidObservable, new ToCoinsToDeduct())).publish();
+
+        Observable.zip(
+                Observable.concat(RxHelper.withLatestFrom(deductCoinsObservable, rxPublisher.getUserObservable(),
+                        rxPublisher.getAuctionStateObservable(), new InsertUserBid())),
+                Observable.concat(deductCoinsObservable.withLatestFrom(rxPublisher.getUserObservable(), new DeductUserCoins())),
+                Observable.concat(deductCoinsObservable.withLatestFrom(rxPublisher.getAuctionStateObservable(), new UpdateHighBid())),
+                new FinalizeIncrementalBid()).subscribe();
+
+        //update the incremental bid ui
+        compositeSubscription.add(incrementalBidObservable.subscribe(new UpdateIncrementalBid()));
+
+        //click bid button logic:
+        //if has enough coins:
+            //deduct coins, do fanfare, update button state to "youre in the lead!"
+        // if not enough coins:
+            //throw dialog: "not enough coins, buy coins?"
+
+        incrementalBidObservable.connect();
+        deductCoinsObservable.connect();
     }
 
     @Override
@@ -108,10 +138,11 @@ public class AuctionPresenter extends ViewPresenter {
         return AUCTION_PRESENTER_TAG;
     }
 
-    public class UpdateUser implements Action1<User> {
+    public class UpdateUser implements Func1<User, Observable<User>> {
         @Override
-        public void call(User user) {
+        public Observable<User> call(User user) {
             tvUserCoins.setText(String.valueOf(user.getCoins()));
+            return Observable.just(user);
         }
     }
 
@@ -153,11 +184,59 @@ public class AuctionPresenter extends ViewPresenter {
         }
     }
 
+    public class FinalizeIncrementalBid implements Func3<Bid, User, Boolean, Observable<Boolean>> {
+        @Override
+        public Observable<Boolean> call(Bid bid, User user, Boolean transactionResult) {
+            return Observable.just(true);
+        }
+    }
+
+    public class UpdateHighBid implements Func2<Long, AuctionState, Observable<Boolean>> {
+        @Override
+        public Observable<Boolean> call(Long bid, AuctionState auctionState) {
+            Timber.d("update high bid");
+            return rxFirebase.observableFirebaseObjectIncrementTransaction(
+                   CurrentItem.getParentRootPath() + "/" + auctionState.getAuctionItemId() + "/" + CurrentItem.getHighBidKey());
+        }
+    }
+
+    public class DeductUserCoins implements Func2<Long, User, Observable<User>> {
+        @Override
+        public Observable<User> call(Long bidAmount, final User user) {
+            Timber.d("deduct user coins");
+            user.deductCoins(bidAmount.intValue());
+            return rxFirebase.observableFirebaseObjectUpdate(user, User.getParentRootPath() + "/" + user.getFacebookId(), false);
+        }
+    }
+
+    public class InsertUserBid implements Func3<Long, User, AuctionState, Observable<Bid>> {
+        @Override
+        public Observable<Bid> call(Long bidAmount, User user, AuctionState auctionState) {
+            Timber.d("insert user bid");
+            Bid bid = new Bid(bidAmount);
+            return rxFirebase.observableFirebaseObjectUpdate(bid,
+                    Bid.getParentRootPath() + "/" + auctionState.getAuctionItemId() + "/" + user.getFacebookId(), true);
+        }
+    }
+
+    public class ToCoinsToDeduct implements Func3<Void, User, Long, Observable<Long>> {
+        @Override
+        public Observable<Long> call(Void ignored, User user, Long incrementalBid) {
+            Timber.d("coins to deduct: " + user.getCoins() + " , " + incrementalBid);
+            if (user.getCoins() >= incrementalBid) {
+                return Observable.just(incrementalBid);
+            } else {
+                return Observable.just(Long.valueOf(0));
+            }
+        }
+    }
+
 
     public Func2<Long, CurrentItem, Long> toIncrementalBid() {
         return new Func2<Long, CurrentItem, Long>() {
             @Override
             public Long call(Long myBid, CurrentItem currentItem) {
+                Timber.d("calculate incremental bid");
                 final int highBid = currentItem.getHighBid();
                 if (highBid <= 0) {
                     return Long.valueOf(1);
