@@ -100,7 +100,7 @@ public class AuctionPresenter extends ViewPresenter {
                     toIncrementalBid()).publish();
 
         final ConnectableObservable<Long> deductCoinsObservable = Observable.concat(
-                RxHelper.withLatestFrom(RxView.clicks(bidButton), rxPublisher.getUserObservable(),
+                RxHelper.withLatestFrom(RxView.clicks(bidButton).throttleLast(1, TimeUnit.SECONDS), rxPublisher.getUserObservable(),
                         incrementalBidObservable, new ToCoinsToDeduct())).publish();
 
         Observable.zip(
@@ -149,10 +149,13 @@ public class AuctionPresenter extends ViewPresenter {
     public class LoadedCurrentItem implements Func1<CurrentItem, Observable<Boolean>> {
         @Override
         public Observable<Boolean> call(CurrentItem currentItem) {
-            return RxAndroid.observeBitmap(currentItem.getImageUrl()).subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread()).flatMap(new RxAndroid.ToLoadedImageView(ivAuctionImage))
-                    .flatMap(new RxAndroid.ToUpdatedTextView(tvAuctionTitle, currentItem.getName()))
-                    .flatMap(new RxAndroid.ToUpdatedTextView(tvHighBid, String.valueOf(currentItem.getHighBid())));
+            return Observable.zip(
+                    RxAndroid.observeBitmap(currentItem.getImageUrl()).subscribeOn(Schedulers.io())
+                            .observeOn(AndroidSchedulers.mainThread()).flatMap(new RxAndroid.ToLoadedImageView(ivAuctionImage)),
+                    Observable.just(currentItem).observeOn(AndroidSchedulers.mainThread())
+                            .flatMap(new RxAndroid.ToUpdatedTextView(tvAuctionTitle, currentItem.getName()))
+                            .flatMap(new RxAndroid.ToUpdatedTextView(tvHighBid, String.valueOf(currentItem.getHighBid()))),
+                    new RxHelper.ZipWaiter());
         }
     }
 

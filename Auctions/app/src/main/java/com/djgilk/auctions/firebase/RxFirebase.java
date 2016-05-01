@@ -208,7 +208,6 @@ public class RxFirebase {
     }
 
     public Observable<Boolean> observableFirebaseObjectIncrementTransaction(final String childRef) {
-        Timber.d("create transaction observable");
         return Observable.create(new Observable.OnSubscribe<Boolean>() {
             @Override
             public void call(final Subscriber<? super Boolean> subscriber) {
@@ -246,14 +245,12 @@ public class RxFirebase {
         return new Func1<Object, Observable<T>>() {
             @Override
             public Observable<T> call(Object ignored) {
-                Timber.d("call toUpdatedFirebaseObject");
                 return observableFirebaseObjectUpdate(object, childRef, isPush);
             }
         };
     }
 
     public <T extends Object> Observable<T> observableFirebaseObjectUpdate(final T object, final String childRef, final boolean isPush) {
-        Timber.d("create new observableFirebaseObjectUpdate observable");
         return Observable.create(new Observable.OnSubscribe<T>() {
             @Override
             public void call(final Subscriber<? super T> subscriber) {
