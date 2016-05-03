@@ -13,6 +13,7 @@ import com.djgilk.auctions.helper.RxHelper;
 import com.djgilk.auctions.helper.RxPublisher;
 import com.djgilk.auctions.model.AuctionState;
 import com.djgilk.auctions.model.Bid;
+import com.djgilk.auctions.model.ClientConfig;
 import com.djgilk.auctions.model.CurrentItem;
 import com.djgilk.auctions.model.PrettyTime;
 import com.djgilk.auctions.model.User;
@@ -24,6 +25,7 @@ import javax.inject.Inject;
 
 import butterknife.Bind;
 import rx.Observable;
+import rx.Observer;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 import rx.functions.Func1;
@@ -77,15 +79,19 @@ public class AuctionPresenter extends ViewPresenter {
     @Bind(R.id.bt_bid)
     LinearLayout bidButton;
 
+    @Bind(R.id.ll_winning)
+    LinearLayout winningNotification;
+
     @Inject
     public AuctionPresenter(){};
 
     public void onCreate(Activity activity) {
         super.onCreate(activity);
         compositeSubscription.add(rxPublisher.getCurrentItemObservable().doOnNext(new RxHelper.Log<CurrentItem>()).observeOn(Schedulers.io())
-                .flatMap(new LoadedCurrentItem()).subscribe());
-        compositeSubscription.add(rxPublisher.getClientConfigObservable().subscribe());
-        compositeSubscription.add(rxPublisher.getUserObservable().doOnNext(new RxHelper.Log<User>()).flatMap(new UpdateUser()).subscribe());
+                .flatMap(new LoadedCurrentItem()).subscribe(new RxHelper.EmptyObserver<Boolean>()));
+        compositeSubscription.add(rxPublisher.getClientConfigObservable().subscribe(new RxHelper.EmptyObserver<ClientConfig>()));
+        compositeSubscription.add(rxPublisher.getUserObservable().doOnNext(new RxHelper.Log<User>())
+                .flatMap(new UpdateUser()).subscribe(new RxHelper.EmptyObserver<User>()));
         compositeSubscription.add(
                 Observable.combineLatest(rxPublisher.getClockOffsetObservable(),
                         Observable.interval(1, TimeUnit.SECONDS),
@@ -99,19 +105,28 @@ public class AuctionPresenter extends ViewPresenter {
                     rxPublisher.getCurrentItemObservable(),
                     toIncrementalBid()).publish();
 
+        // observe bid click
         final ConnectableObservable<Long> deductCoinsObservable = Observable.concat(
                 RxHelper.withLatestFrom(RxView.clicks(bidButton).throttleLast(1, TimeUnit.SECONDS), rxPublisher.getUserObservable(),
                         incrementalBidObservable, new ToCoinsToDeduct())).publish();
 
+        // observe bid processing
         Observable.zip(
-                Observable.concat(RxHelper.withLatestFrom(deductCoinsObservable, rxPublisher.getUserObservable(),
-                        rxPublisher.getAuctionStateObservable(), new InsertUserBid())),
-                Observable.concat(deductCoinsObservable.withLatestFrom(rxPublisher.getUserObservable(), new DeductUserCoins())),
-                Observable.concat(deductCoinsObservable.withLatestFrom(rxPublisher.getAuctionStateObservable(), new UpdateHighBid())),
-                new FinalizeIncrementalBid()).subscribe();
+                Observable.concat(RxHelper.withLatestFrom(deductCoinsObservable.filter(new ZeroFilter()),
+                        rxPublisher.getUserObservable(), rxPublisher.getAuctionStateObservable(), new InsertUserBid())),
+                Observable.concat(deductCoinsObservable.filter(new ZeroFilter()).withLatestFrom(rxPublisher.getUserObservable(), new DeductUserCoins())),
+                Observable.concat(deductCoinsObservable.filter(new ZeroFilter()).withLatestFrom(rxPublisher.getAuctionStateObservable(), new UpdateHighBid())),
+                new RxHelper.ZipWaiter3()).subscribe(new BidObserver());
 
-        //update the incremental bid ui
+        // update the incremental bid ui
         compositeSubscription.add(incrementalBidObservable.subscribe(new UpdateIncrementalBid()));
+
+        // update the user's 'winning' status
+        compositeSubscription.add(Observable.combineLatest(rxPublisher.getCurrentItemObservable(),
+                rxPublisher.getAggregateBidObservable(), new UpdateWiningStatus()).subscribe(new RxHelper.EmptyObserver<Void>()));
+
+        // TODO throw monetization dialog
+        // compositeSubscription.add(deductCoinsObservable.filter(new PositiveNumFilter()))
 
         //click bid button logic:
         //if has enough coins:
@@ -143,6 +158,36 @@ public class AuctionPresenter extends ViewPresenter {
         public Observable<User> call(User user) {
             tvUserCoins.setText(String.valueOf(user.getCoins()));
             return Observable.just(user);
+        }
+    }
+
+    public class ZeroFilter implements Func1<Long, Boolean> {
+        @Override
+        public Boolean call(Long value) {
+            return value > 0;
+        }
+    }
+
+    public class PositiveNumFilter implements Func1<Long, Boolean> {
+        @Override
+        public Boolean call(Long value) {
+            return value <= 0;
+        }
+    }
+
+    public class UpdateWiningStatus implements Func2<CurrentItem, Long, Void> {
+        @Override
+        public Void call(CurrentItem currentItem, Long aggregateBid) {
+            if (aggregateBid >= currentItem.getHighBid()) {
+                // currently winning
+                bidButton.setVisibility(View.GONE);
+                winningNotification.setVisibility(View.VISIBLE);
+            } else {
+                // currently losing
+                bidButton.setVisibility(View.VISIBLE);
+                winningNotification.setVisibility(View.GONE);
+            }
+            return null;
         }
     }
 
@@ -187,10 +232,24 @@ public class AuctionPresenter extends ViewPresenter {
         }
     }
 
-    public class FinalizeIncrementalBid implements Func3<Bid, User, Boolean, Observable<Boolean>> {
+    public class BidObserver implements Observer<Boolean> {
         @Override
-        public Observable<Boolean> call(Bid bid, User user, Boolean transactionResult) {
-            return Observable.just(true);
+        public void onCompleted() {
+            Timber.d("bid onComplete()");
+        }
+
+        @Override
+        public void onError(Throwable e) {
+            // TODO manage errors
+            Timber.e("error bidding: " + e.getMessage());
+        }
+
+        @Override
+        public void onNext(Boolean success) {
+            Timber.d("bid onNext()");
+            if (success) {
+
+            }
         }
     }
 
@@ -225,7 +284,6 @@ public class AuctionPresenter extends ViewPresenter {
     public class ToCoinsToDeduct implements Func3<Void, User, Long, Observable<Long>> {
         @Override
         public Observable<Long> call(Void ignored, User user, Long incrementalBid) {
-            Timber.d("coins to deduct: " + user.getCoins() + " , " + incrementalBid);
             if (user.getCoins() >= incrementalBid) {
                 return Observable.just(incrementalBid);
             } else {
@@ -239,7 +297,6 @@ public class AuctionPresenter extends ViewPresenter {
         return new Func2<Long, CurrentItem, Long>() {
             @Override
             public Long call(Long myBid, CurrentItem currentItem) {
-                Timber.d("calculate incremental bid");
                 final int highBid = currentItem.getHighBid();
                 if (highBid <= 0) {
                     return Long.valueOf(1);

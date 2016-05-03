@@ -3,6 +3,7 @@ package com.djgilk.auctions.helper;
 import com.djgilk.auctions.helper.operator.OperatorWithLatestFrom2;
 
 import rx.Observable;
+import rx.Observer;
 import rx.functions.Action1;
 import rx.functions.Func1;
 import rx.functions.Func2;
@@ -51,6 +52,23 @@ public class RxHelper {
      */
     public static final <T, S, U, R> Observable<R> withLatestFrom(Observable<? extends T> main, Observable<? extends S> other1, Observable<? extends U> other2, Func3<? super T, ? super S, ? super U, ? extends R> resultSelector) {
         return main.lift(new OperatorWithLatestFrom2<T, S, U, R>(other1, other2, resultSelector));
+    }
+
+    public static class EmptyObserver<T extends Object> implements Observer<T> {
+        @Override
+        public void onCompleted() {
+
+        }
+
+        @Override
+        public void onError(Throwable e) {
+            Timber.e("empty observer caught error: " + e.getMessage());
+        }
+
+        @Override
+        public void onNext(T t) {
+
+        }
     }
 
 }
