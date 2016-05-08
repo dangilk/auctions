@@ -10,6 +10,7 @@ import com.djgilk.auctions.helper.RxAndroid;
 import com.djgilk.auctions.helper.RxPublisher;
 import com.djgilk.auctions.presenter.AuctionPresenter;
 import com.djgilk.auctions.presenter.LoginPresenter;
+import com.djgilk.auctions.presenter.ProfilePresenter;
 import com.facebook.FacebookSdk;
 
 import javax.inject.Inject;
@@ -25,6 +26,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Inject
     AuctionPresenter auctionPresenter;
+
+    @Inject
+    ProfilePresenter profilePresenter;
 
     @Inject
     MainApplication mainApplication;
@@ -44,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
         // initialize presenters
         loginPresenter.onCreate(this);
         auctionPresenter.onCreate(this);
+        profilePresenter.onCreate(this);
 
         rxPublisher.getObservablesCompleteObservable()
         .observeOn(AndroidSchedulers.mainThread())

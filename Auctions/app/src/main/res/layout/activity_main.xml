@@ -5,4 +5,5 @@
     android:id="@+id/container">
     <include layout="@layout/login"/>
     <include layout="@layout/auction"/>
+    <include layout="@layout/profile"/>
 </com.djgilk.auctions.view.LinearLayoutContainer>

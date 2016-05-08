@@ -6,6 +6,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.djgilk.auctions.MainApplication;
 import com.djgilk.auctions.R;
 import com.djgilk.auctions.firebase.RxFirebase;
 import com.djgilk.auctions.helper.RxAndroid;
@@ -47,6 +48,12 @@ public class AuctionPresenter extends ViewPresenter {
     RxFirebase rxFirebase;
 
     @Inject
+    ProfilePresenter profilePresenter;
+
+    @Inject
+    MainApplication mainApplication;
+
+    @Inject
     RxPublisher rxPublisher;
 
     @Bind(R.id.ll_auction)
@@ -81,6 +88,9 @@ public class AuctionPresenter extends ViewPresenter {
 
     @Bind(R.id.ll_winning)
     LinearLayout winningNotification;
+
+    @Bind(R.id.iv_settings)
+    ImageView ivSettings;
 
     @Inject
     public AuctionPresenter(){};
@@ -133,6 +143,27 @@ public class AuctionPresenter extends ViewPresenter {
             //deduct coins, do fanfare, update button state to "youre in the lead!"
         // if not enough coins:
             //throw dialog: "not enough coins, buy coins?"
+
+        // go to profile page
+        RxView.clicks(ivSettings).throttleLast(1, TimeUnit.SECONDS)
+                .observeOn(AndroidSchedulers.mainThread())
+                .flatMap(new RxAndroid.ToLayoutFade(mainApplication, this, profilePresenter))
+                .subscribe(new Observer<Object>() {
+                    @Override
+                    public void onCompleted() {
+                        Timber.i("layout transition onCompleted");
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Timber.i("layout transition onError: " + e.getMessage());
+                    }
+
+                    @Override
+                    public void onNext(Object aBoolean) {
+                        Timber.i("layout transition onNext");
+                    }
+                });
 
         incrementalBidObservable.connect();
         deductCoinsObservable.connect();
