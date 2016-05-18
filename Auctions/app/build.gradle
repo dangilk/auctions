@@ -36,7 +36,7 @@ dependencies {
     compile 'com.jakewharton:butterknife:7.0.1'
     //compile 'com.google.android.gms:play-services:8.3.0'
     //for emulator compat:
-    compile 'com.facebook.android:facebook-android-sdk:[4,5)'
+    compile 'com.facebook.android:facebook-android-sdk:4.+'
     compile 'com.firebase:firebase-client-android:2.5.2+'
     compile 'io.reactivex:rxandroid:1.1.0'
     compile 'io.reactivex:rxjava:1.1.0'
@@ -50,4 +50,9 @@ dependencies {
 
     // timber
     compile 'com.jakewharton.timber:timber:4.1.1'
+
+    // leak detection
+    debugCompile 'com.squareup.leakcanary:leakcanary-android:1.4-beta2'
+    releaseCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-beta2'
+    testCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-beta2'
 }

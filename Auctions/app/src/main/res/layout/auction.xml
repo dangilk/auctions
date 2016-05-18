@@ -5,7 +5,7 @@
     android:id="@+id/ll_auction"
     android:background="#d6daff"
     android:gravity="center"
-    android:visibility="visible">
+    android:visibility="gone">
 
     <TextView
         android:layout_width="wrap_content"

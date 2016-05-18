@@ -98,17 +98,17 @@ public class AuctionPresenter extends ViewPresenter {
     public void onCreate(Activity activity) {
         super.onCreate(activity);
         compositeSubscription.add(rxPublisher.getCurrentItemObservable().doOnNext(new RxHelper.Log<CurrentItem>()).observeOn(Schedulers.io())
-                .flatMap(new LoadedCurrentItem()).subscribe(new RxHelper.EmptyObserver<Boolean>()));
+                .flatMap(loadedCurrentItem()).subscribe(new RxHelper.EmptyObserver<Boolean>()));
         compositeSubscription.add(rxPublisher.getClientConfigObservable().subscribe(new RxHelper.EmptyObserver<ClientConfig>()));
         compositeSubscription.add(rxPublisher.getUserObservable().doOnNext(new RxHelper.Log<User>())
-                .flatMap(new UpdateUser()).subscribe(new RxHelper.EmptyObserver<User>()));
+                .flatMap(updateUser()).subscribe(new RxHelper.EmptyObserver<User>()));
         compositeSubscription.add(
                 Observable.combineLatest(rxPublisher.getClockOffsetObservable(),
                         Observable.interval(1, TimeUnit.SECONDS),
                         rxPublisher.getCurrentItemObservable(),
-                        new OffsetClock())
-                        .observeOn(AndroidSchedulers.mainThread()).subscribe(new UpdateClock()));
-        compositeSubscription.add(rxPublisher.getAggregateBidObservable().subscribe(new UpdateMyBids()));
+                        offsetClock())
+                        .observeOn(AndroidSchedulers.mainThread()).subscribe(updateClock()));
+        compositeSubscription.add(rxPublisher.getAggregateBidObservable().subscribe(updateMyBids()));
         // calculate incremental bid
         final ConnectableObservable<Long> incrementalBidObservable =
                 Observable.combineLatest(rxPublisher.getAggregateBidObservable(),
@@ -118,22 +118,22 @@ public class AuctionPresenter extends ViewPresenter {
         // observe bid click
         final ConnectableObservable<Long> deductCoinsObservable = Observable.concat(
                 RxHelper.withLatestFrom(RxView.clicks(bidButton).throttleLast(1, TimeUnit.SECONDS), rxPublisher.getUserObservable(),
-                        incrementalBidObservable, new ToCoinsToDeduct())).publish();
+                        incrementalBidObservable, toCoinsToDeduct())).publish();
 
         // observe bid processing
-        Observable.zip(
-                Observable.concat(RxHelper.withLatestFrom(deductCoinsObservable.filter(new ZeroFilter()),
-                        rxPublisher.getUserObservable(), rxPublisher.getAuctionStateObservable(), new InsertUserBid())),
-                Observable.concat(deductCoinsObservable.filter(new ZeroFilter()).withLatestFrom(rxPublisher.getUserObservable(), new DeductUserCoins())),
-                Observable.concat(deductCoinsObservable.filter(new ZeroFilter()).withLatestFrom(rxPublisher.getAuctionStateObservable(), new UpdateHighBid())),
-                new RxHelper.ZipWaiter3()).subscribe(new BidObserver());
+        compositeSubscription.add(Observable.zip(
+                Observable.concat(RxHelper.withLatestFrom(deductCoinsObservable.filter(zeroFilter()),
+                        rxPublisher.getUserObservable(), rxPublisher.getAuctionStateObservable(), insertUserBid())),
+                Observable.concat(deductCoinsObservable.filter(zeroFilter()).withLatestFrom(rxPublisher.getUserObservable(), deductUserCoins())),
+                Observable.concat(deductCoinsObservable.filter(zeroFilter()).withLatestFrom(rxPublisher.getAuctionStateObservable(), updateHighBid())),
+                new RxHelper.ZipWaiter3()).subscribe(bidObserver()));
 
         // update the incremental bid ui
-        compositeSubscription.add(incrementalBidObservable.subscribe(new UpdateIncrementalBid()));
+        compositeSubscription.add(incrementalBidObservable.subscribe(updateIncrementalBid()));
 
         // update the user's 'winning' status
         compositeSubscription.add(Observable.combineLatest(rxPublisher.getCurrentItemObservable(),
-                rxPublisher.getAggregateBidObservable(), new UpdateWiningStatus()).subscribe(new RxHelper.EmptyObserver<Void>()));
+                rxPublisher.getAggregateBidObservable(), updateWinningStatus()).subscribe(new RxHelper.EmptyObserver<Void>()));
 
         // TODO throw monetization dialog
         // compositeSubscription.add(deductCoinsObservable.filter(new PositiveNumFilter()))
@@ -145,9 +145,9 @@ public class AuctionPresenter extends ViewPresenter {
             //throw dialog: "not enough coins, buy coins?"
 
         // go to profile page
-        RxView.clicks(ivSettings).throttleLast(1, TimeUnit.SECONDS)
+        compositeSubscription.add(RxView.clicks(ivSettings).throttleFirst(1, TimeUnit.SECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
-                .flatMap(new RxAndroid.ToLayoutFade(mainApplication, this, profilePresenter))
+                .flatMap(new RxAndroid.ToLayoutFade(mainApplication, this, profilePresenter, true))
                 .subscribe(new Observer<Object>() {
                     @Override
                     public void onCompleted() {
@@ -163,10 +163,10 @@ public class AuctionPresenter extends ViewPresenter {
                     public void onNext(Object aBoolean) {
                         Timber.i("layout transition onNext");
                     }
-                });
+                }));
 
-        incrementalBidObservable.connect();
-        deductCoinsObservable.connect();
+        compositeSubscription.add(incrementalBidObservable.connect());
+        compositeSubscription.add(deductCoinsObservable.connect());
     }
 
     @Override
@@ -184,145 +184,171 @@ public class AuctionPresenter extends ViewPresenter {
         return AUCTION_PRESENTER_TAG;
     }
 
-    public class UpdateUser implements Func1<User, Observable<User>> {
-        @Override
-        public Observable<User> call(User user) {
-            tvUserCoins.setText(String.valueOf(user.getCoins()));
-            return Observable.just(user);
-        }
+    public Func1<User, Observable<User>> updateUser() {
+        return new Func1<User, Observable<User>>() {
+            @Override
+            public Observable<User> call(User user) {
+                tvUserCoins.setText(String.valueOf(user.getCoins()));
+                return Observable.just(user);
+            }
+        };
     }
 
-    public class ZeroFilter implements Func1<Long, Boolean> {
-        @Override
-        public Boolean call(Long value) {
-            return value > 0;
-        }
+    public Func1<Long, Boolean> zeroFilter() {
+        return new Func1<Long, Boolean>() {
+            @Override
+            public Boolean call(Long value) {
+                return value > 0;
+            }
+        };
     }
 
-    public class PositiveNumFilter implements Func1<Long, Boolean> {
+
+    public static class PositiveNumFilter implements Func1<Long, Boolean> {
         @Override
         public Boolean call(Long value) {
             return value <= 0;
         }
     }
 
-    public class UpdateWiningStatus implements Func2<CurrentItem, Long, Void> {
-        @Override
-        public Void call(CurrentItem currentItem, Long aggregateBid) {
-            if (aggregateBid >= currentItem.getHighBid()) {
-                // currently winning
-                bidButton.setVisibility(View.GONE);
-                winningNotification.setVisibility(View.VISIBLE);
-            } else {
-                // currently losing
-                bidButton.setVisibility(View.VISIBLE);
-                winningNotification.setVisibility(View.GONE);
+    public Func2<CurrentItem, Long, Void> updateWinningStatus() {
+        return new Func2<CurrentItem, Long, Void>() {
+            @Override
+            public Void call(CurrentItem currentItem, Long aggregateBid) {
+                if (aggregateBid >= currentItem.getHighBid()) {
+                    // currently winning
+                    bidButton.setVisibility(View.GONE);
+                    winningNotification.setVisibility(View.VISIBLE);
+                } else {
+                    // currently losing
+                    bidButton.setVisibility(View.VISIBLE);
+                    winningNotification.setVisibility(View.GONE);
+                }
+                return null;
             }
-            return null;
-        }
+        };
     }
 
-    public class LoadedCurrentItem implements Func1<CurrentItem, Observable<Boolean>> {
-        @Override
-        public Observable<Boolean> call(CurrentItem currentItem) {
-            return Observable.zip(
-                    RxAndroid.observeBitmap(currentItem.getImageUrl()).subscribeOn(Schedulers.io())
-                            .observeOn(AndroidSchedulers.mainThread()).flatMap(new RxAndroid.ToLoadedImageView(ivAuctionImage)),
-                    Observable.just(currentItem).observeOn(AndroidSchedulers.mainThread())
-                            .flatMap(new RxAndroid.ToUpdatedTextView(tvAuctionTitle, currentItem.getName()))
-                            .flatMap(new RxAndroid.ToUpdatedTextView(tvHighBid, String.valueOf(currentItem.getHighBid()))),
-                    new RxHelper.ZipWaiter());
-        }
-    }
-
-    public class OffsetClock implements Func3<Long, Long, CurrentItem, PrettyTime> {
-        @Override
-        public PrettyTime call(Long clockOffset, Long interval, CurrentItem currentItem) {
-            return new PrettyTime(currentItem.getAuctionEndTimeMillis(), System.currentTimeMillis() + clockOffset);
-        }
-    }
-
-    public class UpdateClock implements Action1<PrettyTime> {
-        @Override
-        public void call(PrettyTime prettyTime) {
-            prettyTime.setText(tvAuctionTimeLeft, tvAuctionTimeLeftUnits);
-        }
-    }
-
-    public class UpdateMyBids implements Action1<Long> {
-        @Override
-        public void call(Long myBid) {
-            tvYourBid.setText(String.valueOf(myBid));
-        }
-    }
-
-    public class UpdateIncrementalBid implements Action1<Long> {
-        @Override
-        public void call(Long bid) {
-            tvBidIncrement.setText(String.valueOf(bid));
-        }
-    }
-
-    public class BidObserver implements Observer<Boolean> {
-        @Override
-        public void onCompleted() {
-            Timber.d("bid onComplete()");
-        }
-
-        @Override
-        public void onError(Throwable e) {
-            // TODO manage errors
-            Timber.e("error bidding: " + e.getMessage());
-        }
-
-        @Override
-        public void onNext(Boolean success) {
-            Timber.d("bid onNext()");
-            if (success) {
-
+    public Func1<CurrentItem, Observable<Boolean>> loadedCurrentItem() {
+        return new Func1<CurrentItem, Observable<Boolean>>() {
+            @Override
+            public Observable<Boolean> call(CurrentItem currentItem) {
+                return Observable.zip(
+                        RxAndroid.observeBitmap(currentItem.getImageUrl()).subscribeOn(Schedulers.io())
+                                .observeOn(AndroidSchedulers.mainThread()).flatMap(new RxAndroid.ToLoadedImageView(ivAuctionImage)),
+                        Observable.just(currentItem).observeOn(AndroidSchedulers.mainThread())
+                                .flatMap(new RxAndroid.ToUpdatedTextView(tvAuctionTitle, currentItem.getName()))
+                                .flatMap(new RxAndroid.ToUpdatedTextView(tvHighBid, String.valueOf(currentItem.getHighBid()))),
+                        new RxHelper.ZipWaiter());
             }
-        }
+        };
     }
 
-    public class UpdateHighBid implements Func2<Long, AuctionState, Observable<Boolean>> {
-        @Override
-        public Observable<Boolean> call(Long bid, AuctionState auctionState) {
-            Timber.d("update high bid");
-            return rxFirebase.observableFirebaseObjectIncrementTransaction(
-                   CurrentItem.getParentRootPath() + "/" + auctionState.getAuctionItemId() + "/" + CurrentItem.getHighBidKey());
-        }
-    }
-
-    public class DeductUserCoins implements Func2<Long, User, Observable<User>> {
-        @Override
-        public Observable<User> call(Long bidAmount, final User user) {
-            Timber.d("deduct user coins");
-            user.deductCoins(bidAmount.intValue());
-            return rxFirebase.observableFirebaseObjectUpdate(user, User.getParentRootPath() + "/" + user.getFacebookId(), false);
-        }
-    }
-
-    public class InsertUserBid implements Func3<Long, User, AuctionState, Observable<Bid>> {
-        @Override
-        public Observable<Bid> call(Long bidAmount, User user, AuctionState auctionState) {
-            Timber.d("insert user bid");
-            Bid bid = new Bid(bidAmount);
-            return rxFirebase.observableFirebaseObjectUpdate(bid,
-                    Bid.getParentRootPath() + "/" + auctionState.getAuctionItemId() + "/" + user.getFacebookId(), true);
-        }
-    }
-
-    public class ToCoinsToDeduct implements Func3<Void, User, Long, Observable<Long>> {
-        @Override
-        public Observable<Long> call(Void ignored, User user, Long incrementalBid) {
-            if (user.getCoins() >= incrementalBid) {
-                return Observable.just(incrementalBid);
-            } else {
-                return Observable.just(Long.valueOf(0));
+    public Func3<Long, Long, CurrentItem, PrettyTime> offsetClock() {
+        return new Func3<Long, Long, CurrentItem, PrettyTime>() {
+            @Override
+            public PrettyTime call(Long clockOffset, Long interval, CurrentItem currentItem) {
+                return new PrettyTime(currentItem.getAuctionEndTimeMillis(), System.currentTimeMillis() + clockOffset);
             }
-        }
+        };
     }
 
+    public Action1<PrettyTime> updateClock() {
+        return new Action1<PrettyTime>() {
+            @Override
+            public void call(PrettyTime prettyTime) {
+                prettyTime.setText(tvAuctionTimeLeft, tvAuctionTimeLeftUnits);
+            }
+        };
+    }
+
+    public Action1<Long> updateMyBids() {
+        return new Action1<Long>() {
+            @Override
+            public void call(Long myBid) {
+                tvYourBid.setText(String.valueOf(myBid));
+            }
+        };
+    }
+
+    public Action1<Long> updateIncrementalBid() {
+        return new Action1<Long>() {
+            @Override
+            public void call(Long bid) {
+                tvBidIncrement.setText(String.valueOf(bid));
+            }
+        };
+    }
+
+    public Observer<Boolean> bidObserver() {
+        return new Observer<Boolean>() {
+            @Override
+            public void onCompleted() {
+                Timber.d("bid onComplete()");
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                // TODO manage errors
+                Timber.e("error bidding: " + e.getMessage());
+            }
+
+            @Override
+            public void onNext(Boolean success) {
+                Timber.d("bid onNext()");
+                if (success) {
+
+                }
+            }
+        };
+    }
+
+    public Func2<Long, AuctionState, Observable<Boolean>> updateHighBid() {
+        return new Func2<Long, AuctionState, Observable<Boolean>>() {
+            @Override
+            public Observable<Boolean> call(Long aLong, AuctionState auctionState) {
+                Timber.d("update high bid");
+                return rxFirebase.observableFirebaseObjectIncrementTransaction(
+                        CurrentItem.getParentRootPath() + "/" + auctionState.getAuctionItemId() + "/" + CurrentItem.getHighBidKey());
+            }
+        };
+    }
+
+    public Func2<Long, User, Observable<User>> deductUserCoins() {
+        return new Func2<Long, User, Observable<User>>() {
+            @Override
+            public Observable<User> call(Long bidAmount, User user) {
+                Timber.d("deduct user coins");
+                user.deductCoins(bidAmount.intValue());
+                return rxFirebase.observableFirebaseObjectUpdate(user, User.getParentRootPath() + "/" + user.getFacebookId(), false);
+            }
+        };
+    }
+
+    public Func3<Long, User, AuctionState, Observable<Bid>> insertUserBid() {
+        return new Func3<Long, User, AuctionState, Observable<Bid>>() {
+            @Override
+            public Observable<Bid> call(Long bidAmount, User user, AuctionState auctionState) {
+                Timber.d("insert user bid");
+                Bid bid = new Bid(bidAmount);
+                return rxFirebase.observableFirebaseObjectUpdate(bid,
+                        Bid.getParentRootPath() + "/" + auctionState.getAuctionItemId() + "/" + user.getFacebookId(), true);
+            }
+        };
+    }
+
+    public Func3<Void, User, Long, Observable<Long>> toCoinsToDeduct() {
+        return new Func3<Void, User, Long, Observable<Long>>() {
+            @Override
+            public Observable<Long> call(Void aVoid, User user, Long incrementalBid) {
+                if (user.getCoins() >= incrementalBid) {
+                    return Observable.just(incrementalBid);
+                } else {
+                    return Observable.just(Long.valueOf(0));
+                }
+            }
+        };
+    }
 
     public Func2<Long, CurrentItem, Long> toIncrementalBid() {
         return new Func2<Long, CurrentItem, Long>() {

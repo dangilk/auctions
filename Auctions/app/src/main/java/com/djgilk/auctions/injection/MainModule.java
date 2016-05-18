@@ -22,6 +22,7 @@ public class MainModule {
     }
 
     @Provides
+    @Singleton
     public MainApplication provideMainApplication() {
         return mainApplication;
     }

@@ -18,6 +18,8 @@ public class User {
     private String city;
     private String state;
     private String zip;
+    private String email;
+    private String country;
 
     public User() {
         new User(null,null,null,0,null,null,null,null,null);
@@ -52,6 +54,14 @@ public class User {
         return profileImageURL;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
     public int getCoins() {
         return coins;
     }
@@ -82,6 +92,38 @@ public class User {
 
     public String getZip() {
         return zip;
+    }
+
+    public void setAddress1(String address1) {
+        this.address1 = address1;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public void setAddress2(String address2) {
+        this.address2 = address2;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setCountry(String country) {
+        this.country = country;
+    }
+
+    public void setZip(String zip) {
+        this.zip = zip;
     }
 
     public static String getParentRootPath() {

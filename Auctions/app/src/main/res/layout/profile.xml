@@ -3,6 +3,7 @@
     android:orientation="vertical" android:layout_width="match_parent"
     android:id="@+id/ll_profile"
     android:background="#d6daff"
+    android:visibility="gone"
     android:gravity="center"
     android:layout_height="match_parent">
 
@@ -10,21 +11,21 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="My Profile"
+        android:hint="My Profile"
         android:layout_gravity="center_horizontal" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceMedium"
-        android:text="We'll ship your winnings to the address below:"
+        android:hint="We'll ship your winnings to the address below:"
         android:layout_gravity="center_horizontal" />
 
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPersonName"
-        android:text="Name"
+        android:hint="Name"
         android:ems="10"
         android:id="@+id/etName" />
 
@@ -32,7 +33,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textEmailAddress"
-        android:text="Email"
+        android:hint="Email"
         android:ems="10"
         android:id="@+id/etEmail" />
 
@@ -40,7 +41,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPostalAddress"
-        android:text="Address 1"
+        android:hint="Address 1"
         android:ems="10"
         android:id="@+id/etAddress1" />
 
@@ -48,7 +49,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPostalAddress"
-        android:text="Address 2 (optional)"
+        android:hint="Address 2 (optional)"
         android:ems="10"
         android:id="@+id/etAddress2" />
 
@@ -56,7 +57,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPostalAddress"
-        android:text="City"
+        android:hint="City"
         android:ems="10"
         android:id="@+id/etCity" />
 
@@ -64,7 +65,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPostalAddress"
-        android:text="State"
+        android:hint="State"
         android:ems="10"
         android:id="@+id/etState"
         android:layout_gravity="center_horizontal" />
@@ -73,7 +74,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPostalAddress"
-        android:text="Postal Code"
+        android:hint="Postal Code"
         android:ems="10"
         android:id="@+id/etPostal" />
 
@@ -81,14 +82,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPostalAddress"
-        android:text="Country"
+        android:hint="Country"
         android:ems="10"
         android:id="@+id/etCountry" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Save"
+        android:text="Save and Return"
         android:id="@+id/bt_profile"
         android:layout_gravity="center_horizontal" />
 </LinearLayout>

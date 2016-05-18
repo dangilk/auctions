@@ -7,19 +7,26 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 import com.djgilk.auctions.helper.RxAndroid;
+import com.djgilk.auctions.helper.RxHelper;
 import com.djgilk.auctions.helper.RxPublisher;
 import com.djgilk.auctions.presenter.AuctionPresenter;
 import com.djgilk.auctions.presenter.LoginPresenter;
 import com.djgilk.auctions.presenter.ProfilePresenter;
+import com.djgilk.auctions.presenter.ViewPresenter;
 import com.facebook.FacebookSdk;
+
+import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 
+import rx.Observable;
 import rx.Observer;
 import rx.android.schedulers.AndroidSchedulers;
+import rx.subscriptions.CompositeSubscription;
 import timber.log.Timber;
 
 public class MainActivity extends AppCompatActivity {
+    final CompositeSubscription compositeSubscription = new CompositeSubscription();
 
     @Inject
     LoginPresenter loginPresenter;
@@ -50,9 +57,9 @@ public class MainActivity extends AppCompatActivity {
         auctionPresenter.onCreate(this);
         profilePresenter.onCreate(this);
 
-        rxPublisher.getObservablesCompleteObservable()
+        compositeSubscription.add(rxPublisher.getObservablesCompleteObservable().zipWith(Observable.just(null).delay(1, TimeUnit.SECONDS), new RxHelper.ZipWaiter())
         .observeOn(AndroidSchedulers.mainThread())
-                .flatMap(new RxAndroid.ToLayoutFade(mainApplication, loginPresenter, auctionPresenter))
+                .flatMap(new RxAndroid.ToLayoutFade(getMainApplication(), loginPresenter, auctionPresenter, false))
                 .subscribe(new Observer<Object>() {
                     @Override
                     public void onCompleted() {
@@ -68,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
                     public void onNext(Object aBoolean) {
                         Timber.i("layout transition onNext");
                     }
-                });
+                }));
         rxPublisher.connect();
     }
 
@@ -80,7 +87,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         loginPresenter.onDestroy();
         auctionPresenter.onDestroy();
+        profilePresenter.onDestroy();
         rxPublisher.unsubscribe();
+        compositeSubscription.unsubscribe();
         super.onDestroy();
     }
 
@@ -112,5 +121,13 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-
+    @Override
+    public void onBackPressed() {
+        ViewPresenter previous = mainApplication.popBackStack();
+        if (previous != null) {
+            Observable.just(null).flatMap(new RxAndroid.ToLayoutFade(mainApplication, mainApplication.getCurrentPresenter(), previous, false)).subscribe();
+        } else {
+            super.onBackPressed();
+        }
+    }
 }

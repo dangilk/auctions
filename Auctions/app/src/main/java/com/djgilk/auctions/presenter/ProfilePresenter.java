@@ -7,8 +7,16 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
+import com.djgilk.auctions.MainApplication;
 import com.djgilk.auctions.R;
+import com.djgilk.auctions.firebase.RxFirebase;
+import com.djgilk.auctions.helper.RxPublisher;
+import com.djgilk.auctions.helper.StringUtils;
+import com.djgilk.auctions.model.User;
+import com.jakewharton.rxbinding.view.RxView;
 import com.jakewharton.rxbinding.widget.RxTextView;
+
+import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -18,7 +26,9 @@ import rx.Observable;
 import rx.Observer;
 import rx.functions.Action1;
 import rx.functions.Func1;
+import rx.functions.Func2;
 import rx.functions.Func7;
+import rx.subscriptions.CompositeSubscription;
 import timber.log.Timber;
 
 /**
@@ -27,6 +37,16 @@ import timber.log.Timber;
 @Singleton
 public class ProfilePresenter extends ViewPresenter {
     private final static String PROFILE_PRESENTER_TAG = "profilePresenter";
+    final CompositeSubscription compositeSubscription = new CompositeSubscription();
+
+    @Inject
+    RxPublisher rxPublisher;
+
+    @Inject
+    RxFirebase rxFirebase;
+
+    @Inject
+    MainApplication mainApplication;
 
     @Inject
     public ProfilePresenter(){};
@@ -75,14 +95,20 @@ public class ProfilePresenter extends ViewPresenter {
         Observable<Boolean> postalValidObservable = validateStringTextObservable(etPostal);
         Observable<Boolean> countryValidObservable = validateStringTextObservable(etCountry);
 
-        Observable.concat(Observable.combineLatest(nameValidObservable, emailValidObservable, address1ValidObservable, cityValidObservable,
+        compositeSubscription.add(Observable.concat(Observable.combineLatest(nameValidObservable, emailValidObservable, address1ValidObservable, cityValidObservable,
                 stateValidObservable, postalValidObservable, countryValidObservable, new CheckValidProfile()))
-                .subscribe(new ValidProfileObserver());
+                .subscribe(validProfileObserver()));
+
+        compositeSubscription.add(Observable.concat(RxView.clicks(btProfile).throttleFirst(3, TimeUnit.SECONDS)
+                .withLatestFrom(rxPublisher.getUserObservable(), updateUserInfo()))
+                .subscribe(updateObserver()));
+
+        compositeSubscription.add(rxPublisher.getUserObservable().subscribe(presetValues()));
     }
 
     @Override
     public void onDestroy() {
-
+        compositeSubscription.unsubscribe();
     }
 
     @Override
@@ -106,14 +132,14 @@ public class ProfilePresenter extends ViewPresenter {
     static class ValidateStringField implements Func1<CharSequence, Observable<Boolean>> {
         @Override
         public Observable<Boolean> call(CharSequence charSequence) {
-            return Observable.just(charSequence != null && charSequence.length() > 0);
+            return Observable.just(charSequence != null && charSequence.toString().trim().length() > 0);
         }
     }
 
     static class ValidateStringTransformer implements Observable.Transformer<CharSequence, Boolean> {
         @Override
         public Observable<Boolean> call(Observable<CharSequence> charSequenceObservable) {
-            return charSequenceObservable.flatMap(new ValidateStringField()).distinctUntilChanged();
+            return charSequenceObservable.flatMap(new ValidateStringField());//.throttleLast(1, TimeUnit.SECONDS);//.distinctUntilChanged();
         }
     }
 
@@ -122,7 +148,52 @@ public class ProfilePresenter extends ViewPresenter {
                 .doOnNext(new EditTextErrorAction(editText));
     }
 
-    class EditTextErrorAction implements Action1<Boolean> {
+    Observer<User> updateObserver() {
+        return new Observer<User>() {
+            @Override
+            public void onCompleted() {
+
+            }
+
+            @Override
+            public void onError(Throwable e) {
+
+            }
+
+            @Override
+            public void onNext(User user) {
+                mainApplication.popBackStack();
+            }
+        };
+    }
+
+    Observer<User> presetValues() {
+        return new Observer<User>() {
+            @Override
+            public void onCompleted() {
+
+            }
+
+            @Override
+            public void onError(Throwable e) {
+
+            }
+
+            @Override
+            public void onNext(User user) {
+                etName.setText(user.getDisplayName());
+                etAddress1.setText(user.getAddress1());
+                etAddress2.setText(user.getAddress2());
+                etCity.setText(user.getCity());
+                etPostal.setText(user.getZip());
+                etState.setText(user.getState());
+                etCountry.setText(user.getCountry());
+                etEmail.setText(user.getEmail());
+            }
+        };
+    }
+
+    static class EditTextErrorAction implements Action1<Boolean> {
         final EditText editText;
         EditTextErrorAction(EditText editText) {
             this.editText = editText;
@@ -145,20 +216,41 @@ public class ProfilePresenter extends ViewPresenter {
         }
     }
 
-    class ValidProfileObserver implements Observer<Boolean> {
-        @Override
-        public void onCompleted() {
+    Observer<Boolean> validProfileObserver() {
+        return new Observer<Boolean>() {
+            @Override
+            public void onCompleted() {
 
-        }
+            }
 
-        @Override
-        public void onError(Throwable e) {
+            @Override
+            public void onError(Throwable e) {
 
-        }
+            }
 
-        @Override
-        public void onNext(Boolean valid) {
-            btProfile.setEnabled(valid);
-        }
+            @Override
+            public void onNext(Boolean valid) {
+                btProfile.setEnabled(valid);
+            }
+        };
+    }
+
+
+    Func2<Void, User, Observable<User>> updateUserInfo() {
+        return new Func2<Void, User, Observable<User>>() {
+            @Override
+            public Observable<User> call(Void click, User user) {
+                Timber.d("update user info");
+                user.setDisplayName(StringUtils.getString(etName));
+                user.setAddress1(StringUtils.getString(etAddress1));
+                user.setAddress2(StringUtils.getString(etAddress2));
+                user.setCity(StringUtils.getString(etCity));
+                user.setZip(StringUtils.getString(etPostal));
+                user.setState(StringUtils.getString(etState));
+                user.setCountry(StringUtils.getString(etCountry));
+                user.setEmail(StringUtils.getString(etEmail));
+                return rxFirebase.observableFirebaseObjectUpdate(user, User.getParentRootPath() + "/" + user.getFacebookId(), false);
+            }
+        };
     }
 }

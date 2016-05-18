@@ -28,15 +28,15 @@ import timber.log.Timber;
 @Singleton
 public class RxFacebook {
 
-    AccessTokenTracker accessTokenTracker;
-
     @Inject
     RxFacebook(){}
 
     public Observable<FacebookAuthEvent> observeFacebookAuth(final Activity activity, final CallbackManager callbackManager) {
+        Timber.d("observeFacebookAuth()");
         return Observable.create(new Observable.OnSubscribe<FacebookAuthEvent>() {
             @Override
             public void call(final Subscriber<? super FacebookAuthEvent> subscriber) {
+                Timber.d("subscribe to fb auth: " + subscriber.getClass().getName());
                 final LoginManager loginManager = LoginManager.getInstance();
                 loginManager.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
                     @Override
@@ -47,38 +47,40 @@ public class RxFacebook {
 
                     @Override
                     public void onCancel() {
+                        Timber.d("facebook onCancel");
                         //subscriber.onError(new RuntimeException("user cancelled login"));
                     }
 
                     @Override
                     public void onError(FacebookException exception) {
+                        Timber.d("facebook onError");
                         subscriber.onError(exception);
                     }
                 });
 
-                if (accessTokenTracker == null) {
-                    Timber.d("start tracking facebook data");
-                    accessTokenTracker = new AccessTokenTracker() {
-                        @Override
-                        protected void onCurrentAccessTokenChanged(
-                                AccessToken oldAccessToken,
-                                AccessToken currentAccessToken) {
-                            Timber.d("access token changed: " + currentAccessToken.getToken());
-
-                            subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
-                        }
-                    };
-                    accessTokenTracker.startTracking();
-                }
-
                 final List<String> permissions = new ArrayList<String>();
                 AccessToken currentAccessToken = AccessToken.getCurrentAccessToken();
                 if (currentAccessToken == null || currentAccessToken.isExpired()) {
+                    Timber.d("bad fb access token, need to log in");
                     loginManager.logInWithReadPermissions(activity, permissions);
                 } else {
                     Timber.d("facebook access token: " + currentAccessToken.getToken());
                     subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
                 }
+
+                final AccessTokenTracker accessTokenTracker = new AccessTokenTracker() {
+                    @Override
+                    protected void onCurrentAccessTokenChanged(
+                            AccessToken oldAccessToken,
+                            AccessToken currentAccessToken) {
+                        Timber.d("access token changed: " + currentAccessToken.getToken());
+
+                        subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
+                    }
+                };
+
+                Timber.d("start tracking facebook data");
+                accessTokenTracker.startTracking();
 
                 // When the subscription is cancelled, clean up
                 subscriber.add(Subscriptions.create(new Action0() {

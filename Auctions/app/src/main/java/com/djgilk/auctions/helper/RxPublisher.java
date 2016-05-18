@@ -24,13 +24,12 @@ import javax.inject.Singleton;
 import rx.Observable;
 import rx.Subscription;
 import rx.observables.ConnectableObservable;
-import rx.schedulers.Schedulers;
 /**
  * Created by dangilk on 3/3/16.
  */
 @Singleton
 public class RxPublisher {
-    ConnectableObservable<FacebookAuthEvent> facebookAuthEventObservable;
+    Observable<FacebookAuthEvent> facebookAuthEventObservable;
     ConnectableObservable<FirebaseAuthEvent> firebaseAuthEventObservable;
     ConnectableObservable<CurrentItem> currentItemObservable;
     ConnectableObservable<ClientConfig> clientConfigObservable;
@@ -62,7 +61,7 @@ public class RxPublisher {
 
     public void publish(Activity activity) {
         // auth layer
-        facebookAuthEventObservable = rxFacebook.observeFacebookAuth(activity, callbackManager).subscribeOn(Schedulers.io()).publish();
+        facebookAuthEventObservable = rxFacebook.observeFacebookAuth(activity, callbackManager)/*.subscribeOn(Schedulers.io()) maybe causes weird race conditions?*/;
         firebaseAuthEventObservable = facebookAuthEventObservable.flatMap(rxFirebase.toFirebaseAuthEvent()).publish();
         userCreationObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseUserCreation()).publish();
         loginStateObservable = userCreationObservable.flatMap(rxFirebase.toLoginState()).publish();
@@ -78,7 +77,7 @@ public class RxPublisher {
         // initialization complete
         observablesCompleteObservable = Observable.zip(currentItemObservable, clientConfigObservable, userObservable, new RxHelper.ZipWaiter3()).publish();
 
-        connectableObservables.add(facebookAuthEventObservable);
+        //connectableObservables.add(facebookAuthEventObservable);
         connectableObservables.add(firebaseAuthEventObservable);
         connectableObservables.add(currentItemObservable);
         connectableObservables.add(clientConfigObservable);
@@ -108,10 +107,6 @@ public class RxPublisher {
     // for facebook login
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         callbackManager.onActivityResult(requestCode, resultCode, data);
-    }
-
-    public ConnectableObservable<FacebookAuthEvent> getFacebookAuthEventObservable() {
-        return facebookAuthEventObservable;
     }
 
     public ConnectableObservable<FirebaseAuthEvent> getFirebaseAuthEventObservable() {
