@@ -9,10 +9,10 @@ import android.view.MenuItem;
 import com.djgilk.auctions.helper.RxAndroid;
 import com.djgilk.auctions.helper.RxHelper;
 import com.djgilk.auctions.helper.RxPublisher;
+import com.djgilk.auctions.helper.ViewUtils;
 import com.djgilk.auctions.presenter.AuctionPresenter;
 import com.djgilk.auctions.presenter.LoginPresenter;
 import com.djgilk.auctions.presenter.ProfilePresenter;
-import com.djgilk.auctions.presenter.ViewPresenter;
 import com.facebook.FacebookSdk;
 
 import java.util.concurrent.TimeUnit;
@@ -22,6 +22,7 @@ import javax.inject.Inject;
 import rx.Observable;
 import rx.Observer;
 import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Func1;
 import rx.subscriptions.CompositeSubscription;
 import timber.log.Timber;
 
@@ -45,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Timber.d("onCreate mainActivity, savedInstanceState: " + savedInstanceState);
         super.onCreate(savedInstanceState);
         getMainApplication().getMainComponent().inject(this);
         FacebookSdk.sdkInitialize(getApplicationContext());
@@ -53,9 +55,10 @@ public class MainActivity extends AppCompatActivity {
         rxPublisher.publish(this);
 
         // initialize presenters
+        profilePresenter.onCreate(this);
         loginPresenter.onCreate(this);
         auctionPresenter.onCreate(this);
-        profilePresenter.onCreate(this);
+
 
         compositeSubscription.add(rxPublisher.getObservablesCompleteObservable().zipWith(Observable.just(null).delay(1, TimeUnit.SECONDS), new RxHelper.ZipWaiter())
         .observeOn(AndroidSchedulers.mainThread())
@@ -79,12 +82,17 @@ public class MainActivity extends AppCompatActivity {
         rxPublisher.connect();
     }
 
+    public Func1<Object, Observable<Object>> fadeFromAuctionToProfilePresenter() {
+        return new RxAndroid.ToLayoutFade(getMainApplication(), auctionPresenter, profilePresenter, true);
+    }
+
     private MainApplication getMainApplication() {
         return ((MainApplication) getApplication());
     }
 
     @Override
     protected void onDestroy() {
+        Timber.d("onDestroy mainActivity");
         loginPresenter.onDestroy();
         auctionPresenter.onDestroy();
         profilePresenter.onDestroy();
@@ -123,10 +131,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        ViewPresenter previous = mainApplication.popBackStack();
-        if (previous != null) {
-            Observable.just(null).flatMap(new RxAndroid.ToLayoutFade(mainApplication, mainApplication.getCurrentPresenter(), previous, false)).subscribe();
-        } else {
+        if (!ViewUtils.goBack(mainApplication)) {
             super.onBackPressed();
         }
     }

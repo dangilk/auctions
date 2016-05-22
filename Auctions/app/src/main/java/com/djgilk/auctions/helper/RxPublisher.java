@@ -15,7 +15,9 @@ import com.djgilk.auctions.model.User;
 import com.facebook.CallbackManager;
 import com.firebase.client.Firebase;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.inject.Inject;
@@ -24,6 +26,8 @@ import javax.inject.Singleton;
 import rx.Observable;
 import rx.Subscription;
 import rx.observables.ConnectableObservable;
+import timber.log.Timber;
+
 /**
  * Created by dangilk on 3/3/16.
  */
@@ -41,7 +45,7 @@ public class RxPublisher {
     ConnectableObservable<AuctionState> auctionStateObservable;
     ConnectableObservable<Long> aggregateBidObservable;
 
-    Set<ConnectableObservable<?>> connectableObservables = new HashSet<ConnectableObservable<?>>();
+    List<ConnectableObservable<?>> connectableObservables = new ArrayList<ConnectableObservable<?>>();
     Set<Subscription> subscriptions = new HashSet<Subscription>();
 
     @Inject
@@ -60,6 +64,7 @@ public class RxPublisher {
     RxPublisher() {}
 
     public void publish(Activity activity) {
+        Timber.d("rxPublisher.publish()");
         // auth layer
         facebookAuthEventObservable = rxFacebook.observeFacebookAuth(activity, callbackManager)/*.subscribeOn(Schedulers.io()) maybe causes weird race conditions?*/;
         firebaseAuthEventObservable = facebookAuthEventObservable.flatMap(rxFirebase.toFirebaseAuthEvent()).publish();
@@ -88,12 +93,15 @@ public class RxPublisher {
         connectableObservables.add(clockOffsetObservable);
         connectableObservables.add(auctionStateObservable);
         connectableObservables.add(aggregateBidObservable);
+        Timber.d("rxPublisher.publish() complete");
     }
 
     public void connect() {
+        Timber.d("rxPublisher.connect()");
         for (ConnectableObservable<?> connectableObservable : connectableObservables) {
             subscriptions.add(connectableObservable.connect());
         }
+        Timber.d("rxPublisher.connect() complete");
     }
 
     public void unsubscribe() {

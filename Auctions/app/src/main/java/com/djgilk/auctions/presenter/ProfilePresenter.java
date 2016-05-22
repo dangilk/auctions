@@ -12,6 +12,7 @@ import com.djgilk.auctions.R;
 import com.djgilk.auctions.firebase.RxFirebase;
 import com.djgilk.auctions.helper.RxPublisher;
 import com.djgilk.auctions.helper.StringUtils;
+import com.djgilk.auctions.helper.ViewUtils;
 import com.djgilk.auctions.model.User;
 import com.jakewharton.rxbinding.view.RxView;
 import com.jakewharton.rxbinding.widget.RxTextView;
@@ -19,7 +20,6 @@ import com.jakewharton.rxbinding.widget.RxTextView;
 import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
-import javax.inject.Singleton;
 
 import butterknife.Bind;
 import rx.Observable;
@@ -34,7 +34,6 @@ import timber.log.Timber;
 /**
  * Created by dangilk on 5/8/16.
  */
-@Singleton
 public class ProfilePresenter extends ViewPresenter {
     private final static String PROFILE_PRESENTER_TAG = "profilePresenter";
     final CompositeSubscription compositeSubscription = new CompositeSubscription();
@@ -84,7 +83,7 @@ public class ProfilePresenter extends ViewPresenter {
     @Override
     public void onCreate(Activity activity) {
         super.onCreate(activity);
-
+        Timber.d("profilePresenter.onCreate()");
 
         Observable<Boolean> nameValidObservable = validateStringTextObservable(etName);
         Observable<Boolean> emailValidObservable = RxTextView.textChanges(etEmail).flatMap(new ValidateEmail())
@@ -104,6 +103,7 @@ public class ProfilePresenter extends ViewPresenter {
                 .subscribe(updateObserver()));
 
         compositeSubscription.add(rxPublisher.getUserObservable().subscribe(presetValues()));
+        Timber.d("profilePresenter.onCreate() complete");
     }
 
     @Override
@@ -113,6 +113,7 @@ public class ProfilePresenter extends ViewPresenter {
 
     @Override
     public View getLayout() {
+        Timber.d("get profile layout: " + profileLayout);
         return profileLayout;
     }
 
@@ -162,7 +163,7 @@ public class ProfilePresenter extends ViewPresenter {
 
             @Override
             public void onNext(User user) {
-                mainApplication.popBackStack();
+                ViewUtils.goBack(mainApplication);
             }
         };
     }

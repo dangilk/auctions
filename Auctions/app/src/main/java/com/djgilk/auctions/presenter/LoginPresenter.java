@@ -7,14 +7,12 @@ import android.widget.LinearLayout;
 import com.djgilk.auctions.R;
 
 import javax.inject.Inject;
-import javax.inject.Singleton;
 
 import butterknife.Bind;
 
 /**
  * Created by dangilk on 2/25/16.
  */
-@Singleton
 public class LoginPresenter extends ViewPresenter {
     private final static String LOGIN_PRESENTER_TAG = "loginPresenter";
 

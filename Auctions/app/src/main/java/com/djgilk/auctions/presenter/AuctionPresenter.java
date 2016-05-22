@@ -1,11 +1,11 @@
 package com.djgilk.auctions.presenter;
 
-import android.app.Activity;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.djgilk.auctions.MainActivity;
 import com.djgilk.auctions.MainApplication;
 import com.djgilk.auctions.R;
 import com.djgilk.auctions.firebase.RxFirebase;
@@ -46,9 +46,6 @@ public class AuctionPresenter extends ViewPresenter {
 
     @Inject
     RxFirebase rxFirebase;
-
-    @Inject
-    ProfilePresenter profilePresenter;
 
     @Inject
     MainApplication mainApplication;
@@ -95,8 +92,10 @@ public class AuctionPresenter extends ViewPresenter {
     @Inject
     public AuctionPresenter(){};
 
-    public void onCreate(Activity activity) {
+    public void onCreate(MainActivity activity) {
         super.onCreate(activity);
+        Timber.d("auctionPresenter.onCreate()");
+
         compositeSubscription.add(rxPublisher.getCurrentItemObservable().doOnNext(new RxHelper.Log<CurrentItem>()).observeOn(Schedulers.io())
                 .flatMap(loadedCurrentItem()).subscribe(new RxHelper.EmptyObserver<Boolean>()));
         compositeSubscription.add(rxPublisher.getClientConfigObservable().subscribe(new RxHelper.EmptyObserver<ClientConfig>()));
@@ -147,7 +146,7 @@ public class AuctionPresenter extends ViewPresenter {
         // go to profile page
         compositeSubscription.add(RxView.clicks(ivSettings).throttleFirst(1, TimeUnit.SECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
-                .flatMap(new RxAndroid.ToLayoutFade(mainApplication, this, profilePresenter, true))
+                .flatMap(activity.fadeFromAuctionToProfilePresenter())
                 .subscribe(new Observer<Object>() {
                     @Override
                     public void onCompleted() {
@@ -167,6 +166,7 @@ public class AuctionPresenter extends ViewPresenter {
 
         compositeSubscription.add(incrementalBidObservable.connect());
         compositeSubscription.add(deductCoinsObservable.connect());
+        Timber.d("auctionPresenter.onCreate() complete");
     }
 
     @Override
