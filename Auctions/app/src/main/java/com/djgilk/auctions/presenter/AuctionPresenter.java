@@ -8,6 +8,10 @@ import android.widget.TextView;
 import com.djgilk.auctions.MainActivity;
 import com.djgilk.auctions.MainApplication;
 import com.djgilk.auctions.R;
+import com.djgilk.auctions.billing.util.IabHelper;
+import com.djgilk.auctions.billing.util.IabResult;
+import com.djgilk.auctions.billing.util.Purchase;
+import com.djgilk.auctions.billing.util.RxBilling;
 import com.djgilk.auctions.firebase.RxFirebase;
 import com.djgilk.auctions.helper.RxAndroid;
 import com.djgilk.auctions.helper.RxHelper;
@@ -41,7 +45,8 @@ import timber.log.Timber;
  */
 public class AuctionPresenter extends ViewPresenter {
     private final static String AUCTION_PRESENTER_TAG = "auctionPresenter";
-
+    public final static String BILLING_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtE0g6SBWF0jB8k5BgAJPkPoAK/Jv06kHxdaN4VJEVmo5BovzedGZzhJ9A/rmexQ0ggBT7wHvpz1cY9JgLfPDOFIP4NZpwwuuoISWNV7X3vIS+ecSR97LqcALfuMJg197hUcJtqvX1N+OUN9v//oTTctb1aGZbW/36Y6d6PTa6Xh6jZppIza+EOT/1WNIwsYSHzyN+4BgNINAqJPkjAlSAgvHchNrgKHfBjax3KVBYph59iMQ4gJoGHBYXNcP6mbdtjLHeBl03ZyQLbf/AfRYF6CYl0kvAaf4ULTKOhVYkDN67+4xpOu3HJ6cGNIKBIk5wKkd/D+Yf25Do7PI6WhRPwIDAQAB";
+    IabHelper iabHelper;
     final CompositeSubscription compositeSubscription = new CompositeSubscription();
 
     @Inject
@@ -95,6 +100,18 @@ public class AuctionPresenter extends ViewPresenter {
     public void onCreate(MainActivity activity) {
         super.onCreate(activity);
         Timber.d("auctionPresenter.onCreate()");
+        iabHelper = new IabHelper(activity, BILLING_KEY);
+        iabHelper.startSetup(new IabHelper.OnIabSetupFinishedListener() {
+            public void onIabSetupFinished(IabResult result) {
+                if (!result.isSuccess()) {
+                    // Oh noes, there was a problem.
+                    Timber.d("Problem setting up In-app Billing: " + result);
+                } else {
+                    Timber.d("iab helper is set up!");
+                }
+                // Hooray, IAB is fully set up!
+            }
+        });
 
         compositeSubscription.add(rxPublisher.getCurrentItemObservable().doOnNext(new RxHelper.Log<CurrentItem>()).observeOn(Schedulers.io())
                 .flatMap(loadedCurrentItem()).subscribe(new RxHelper.EmptyObserver<Boolean>()));
@@ -135,7 +152,8 @@ public class AuctionPresenter extends ViewPresenter {
                 rxPublisher.getAggregateBidObservable(), updateWinningStatus()).subscribe(new RxHelper.EmptyObserver<Void>()));
 
         // TODO throw monetization dialog
-        // compositeSubscription.add(deductCoinsObservable.filter(new PositiveNumFilter()))
+        compositeSubscription.add(deductCoinsObservable.filter(new PositiveNumFilter())
+                .flatMap(observePurchase(iabHelper, activity)).subscribe());
 
         //click bid button logic:
         //if has enough coins:
@@ -172,6 +190,14 @@ public class AuctionPresenter extends ViewPresenter {
     @Override
     public void onDestroy() {
         compositeSubscription.unsubscribe();
+        if (iabHelper != null) {
+            try {
+                iabHelper.dispose();
+            } catch (Exception e) {
+
+            }
+        }
+        iabHelper = null;
     }
 
     @Override
@@ -182,6 +208,15 @@ public class AuctionPresenter extends ViewPresenter {
     @Override
     public String getPresenterTag() {
         return AUCTION_PRESENTER_TAG;
+    }
+
+    public Func1<Long, Observable<Purchase>> observePurchase(final IabHelper helper, final MainActivity activity) {
+        return new Func1<Long, Observable<Purchase>>() {
+            @Override
+            public Observable<Purchase> call(Long aLong) {
+                return RxBilling.observePurchase(helper, activity);
+            }
+        };
     }
 
     public Func1<User, Observable<User>> updateUser() {

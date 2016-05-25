@@ -59,6 +59,11 @@ public class MainActivity extends AppCompatActivity {
         loginPresenter.onCreate(this);
         auctionPresenter.onCreate(this);
 
+        // initialize billing service
+//        Intent serviceIntent = new Intent("com.android.vending.billing.InAppBillingService.BIND");
+//        serviceIntent.setPackage("com.android.vending");
+//        bindService(serviceIntent, billingServiceConnection, Context.BIND_AUTO_CREATE);
+
 
         compositeSubscription.add(rxPublisher.getObservablesCompleteObservable().zipWith(Observable.just(null).delay(1, TimeUnit.SECONDS), new RxHelper.ZipWaiter())
         .observeOn(AndroidSchedulers.mainThread())
