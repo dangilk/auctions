@@ -33,7 +33,7 @@ import timber.log.Timber;
  */
 @Singleton
 public class RxPublisher {
-    Observable<FacebookAuthEvent> facebookAuthEventObservable;
+    ConnectableObservable<FacebookAuthEvent> facebookAuthEventObservable;
     ConnectableObservable<FirebaseAuthEvent> firebaseAuthEventObservable;
     ConnectableObservable<CurrentItem> currentItemObservable;
     ConnectableObservable<ClientConfig> clientConfigObservable;
@@ -66,7 +66,7 @@ public class RxPublisher {
     public void publish(Activity activity) {
         Timber.d("rxPublisher.publish()");
         // auth layer
-        facebookAuthEventObservable = rxFacebook.observeFacebookAuth(activity, callbackManager)/*.subscribeOn(Schedulers.io()) maybe causes weird race conditions?*/;
+        facebookAuthEventObservable = rxFacebook.observeFacebookAuth(activity, callbackManager).publish();/*.subscribeOn(Schedulers.io()) maybe causes weird race conditions?*/;
         firebaseAuthEventObservable = facebookAuthEventObservable.flatMap(rxFirebase.toFirebaseAuthEvent()).publish();
         userCreationObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseUserCreation()).publish();
         loginStateObservable = userCreationObservable.flatMap(rxFirebase.toLoginState()).publish();
@@ -82,7 +82,7 @@ public class RxPublisher {
         // initialization complete
         observablesCompleteObservable = Observable.zip(currentItemObservable, clientConfigObservable, userObservable, new RxHelper.ZipWaiter3()).publish();
 
-        //connectableObservables.add(facebookAuthEventObservable);
+        connectableObservables.add(facebookAuthEventObservable);
         connectableObservables.add(firebaseAuthEventObservable);
         connectableObservables.add(currentItemObservable);
         connectableObservables.add(clientConfigObservable);

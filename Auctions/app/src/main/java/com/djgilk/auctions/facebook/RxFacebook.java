@@ -58,6 +58,16 @@ public class RxFacebook {
                     }
                 });
 
+                final AccessTokenTracker accessTokenTracker = new AccessTokenTracker() {
+                    @Override
+                    protected void onCurrentAccessTokenChanged(
+                            AccessToken oldAccessToken,
+                            AccessToken currentAccessToken) {
+                        Timber.d("access token changed: " + currentAccessToken.getToken());
+                        subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
+                    }
+                };
+
                 final List<String> permissions = new ArrayList<String>();
                 AccessToken currentAccessToken = AccessToken.getCurrentAccessToken();
                 if (currentAccessToken == null || currentAccessToken.isExpired()) {
@@ -65,22 +75,10 @@ public class RxFacebook {
                     loginManager.logInWithReadPermissions(activity, permissions);
                 } else {
                     Timber.d("facebook access token: " + currentAccessToken.getToken());
-                    subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
+                    //subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
+                    Timber.d("start tracking facebook data");
+                    accessTokenTracker.startTracking();
                 }
-
-                final AccessTokenTracker accessTokenTracker = new AccessTokenTracker() {
-                    @Override
-                    protected void onCurrentAccessTokenChanged(
-                            AccessToken oldAccessToken,
-                            AccessToken currentAccessToken) {
-                        Timber.d("access token changed: " + currentAccessToken.getToken());
-
-                        subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
-                    }
-                };
-
-                Timber.d("start tracking facebook data");
-                accessTokenTracker.startTracking();
 
                 // When the subscription is cancelled, clean up
                 subscriber.add(Subscriptions.create(new Action0() {
