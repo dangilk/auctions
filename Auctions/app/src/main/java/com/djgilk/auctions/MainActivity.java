@@ -109,7 +109,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        rxPublisher.onActivityResult(requestCode, resultCode, data);
+        if (rxPublisher.onActivityResult(requestCode, resultCode, data)) {
+            return;
+        } else if (auctionPresenter.onActivityResult(requestCode, resultCode, data)) {
+            return;
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
+        }
     }
 
     @Override

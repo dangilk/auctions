@@ -74,6 +74,11 @@ public class User {
         }
     }
 
+    public int incCoins(int coins) {
+        this.coins += coins;
+        return this.coins;
+    }
+
     public String getAddress1() {
         return address1;
     }
@@ -128,6 +133,10 @@ public class User {
 
     public static String getParentRootPath() {
         return "users/";
+    }
+
+    public static String getPath(User user) {
+        return getParentRootPath() + "/" + user.getFacebookId();
     }
 
     @Override

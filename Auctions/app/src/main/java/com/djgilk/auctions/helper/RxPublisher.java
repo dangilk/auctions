@@ -76,7 +76,7 @@ public class RxPublisher {
         clockOffsetObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseClockOffset()).publish();
         currentItemObservable = auctionStateObservable.flatMap(CurrentItem.fromAuctionState(rxFirebase)).publish();
         clientConfigObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).publish();
-        userObservable = userCreationObservable.flatMap(rxFirebase.toFirebaseUser()).publish();
+        userObservable = userCreationObservable.flatMap(rxFirebase.toFirebaseUser()).replay(1);
         aggregateBidObservable = Observable.concat(Observable.combineLatest(auctionStateObservable, userObservable, Bid.observeAggregateBids(firebase))).publish();
 
         // initialization complete
@@ -113,8 +113,8 @@ public class RxPublisher {
     }
 
     // for facebook login
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        callbackManager.onActivityResult(requestCode, resultCode, data);
+    public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
+        return callbackManager.onActivityResult(requestCode, resultCode, data);
     }
 
     public ConnectableObservable<FirebaseAuthEvent> getFirebaseAuthEventObservable() {

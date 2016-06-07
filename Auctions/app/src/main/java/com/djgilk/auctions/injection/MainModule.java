@@ -14,7 +14,7 @@ import dagger.Provides;
  */
 @Module
 public class MainModule {
-    private final static String FIREBASE_URL = "https://fiery-heat-6556.firebaseio.com/";
+    private final static String FIREBASE_URL = "https://djgauctions.firebaseIO.com";//"https://fiery-heat-6556.firebaseio.com/";
     private MainApplication mainApplication;
 
     public MainModule(MainApplication mainApplication) {

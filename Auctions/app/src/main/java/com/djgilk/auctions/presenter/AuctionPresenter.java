@@ -1,5 +1,6 @@
 package com.djgilk.auctions.presenter;
 
+import android.content.Intent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -8,10 +9,6 @@ import android.widget.TextView;
 import com.djgilk.auctions.MainActivity;
 import com.djgilk.auctions.MainApplication;
 import com.djgilk.auctions.R;
-import com.djgilk.auctions.billing.util.IabHelper;
-import com.djgilk.auctions.billing.util.IabResult;
-import com.djgilk.auctions.billing.util.Purchase;
-import com.djgilk.auctions.billing.util.RxBilling;
 import com.djgilk.auctions.firebase.RxFirebase;
 import com.djgilk.auctions.helper.RxAndroid;
 import com.djgilk.auctions.helper.RxHelper;
@@ -23,6 +20,11 @@ import com.djgilk.auctions.model.CurrentItem;
 import com.djgilk.auctions.model.PrettyTime;
 import com.djgilk.auctions.model.User;
 import com.jakewharton.rxbinding.view.RxView;
+import com.pavlospt.androidiap.billing.BillingProcessor;
+import com.pavlospt.androidiap.models.ConsumeModel;
+import com.pavlospt.androidiap.models.PurchaseDataModel;
+import com.pavlospt.androidiap.models.PurchaseModel;
+import com.pavlospt.androidiap.utils.Constants;
 
 import java.util.concurrent.TimeUnit;
 
@@ -43,10 +45,11 @@ import timber.log.Timber;
 /**
  * Created by dangilk on 2/27/16.
  */
-public class AuctionPresenter extends ViewPresenter {
+public class AuctionPresenter extends ViewPresenter implements BillingProcessor.BillingProcessorListener {
     private final static String AUCTION_PRESENTER_TAG = "auctionPresenter";
+    String CONSUMABLE_PRODUCT_ID = "coins50";//"android.test.purchased";
     public final static String BILLING_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtE0g6SBWF0jB8k5BgAJPkPoAK/Jv06kHxdaN4VJEVmo5BovzedGZzhJ9A/rmexQ0ggBT7wHvpz1cY9JgLfPDOFIP4NZpwwuuoISWNV7X3vIS+ecSR97LqcALfuMJg197hUcJtqvX1N+OUN9v//oTTctb1aGZbW/36Y6d6PTa6Xh6jZppIza+EOT/1WNIwsYSHzyN+4BgNINAqJPkjAlSAgvHchNrgKHfBjax3KVBYph59iMQ4gJoGHBYXNcP6mbdtjLHeBl03ZyQLbf/AfRYF6CYl0kvAaf4ULTKOhVYkDN67+4xpOu3HJ6cGNIKBIk5wKkd/D+Yf25Do7PI6WhRPwIDAQAB";
-    IabHelper iabHelper;
+    BillingProcessor billingProcessor;
     final CompositeSubscription compositeSubscription = new CompositeSubscription();
 
     @Inject
@@ -97,21 +100,10 @@ public class AuctionPresenter extends ViewPresenter {
     @Inject
     public AuctionPresenter(){};
 
-    public void onCreate(MainActivity activity) {
+    public void onCreate(final MainActivity activity) {
         super.onCreate(activity);
         Timber.d("auctionPresenter.onCreate()");
-        iabHelper = new IabHelper(activity, BILLING_KEY);
-        iabHelper.startSetup(new IabHelper.OnIabSetupFinishedListener() {
-            public void onIabSetupFinished(IabResult result) {
-                if (!result.isSuccess()) {
-                    // Oh noes, there was a problem.
-                    Timber.d("Problem setting up In-app Billing: " + result);
-                } else {
-                    Timber.d("iab helper is set up!");
-                }
-                // Hooray, IAB is fully set up!
-            }
-        });
+        this.billingProcessor = new BillingProcessor(mainApplication, BILLING_KEY, this);
 
         compositeSubscription.add(rxPublisher.getCurrentItemObservable().doOnNext(new RxHelper.Log<CurrentItem>()).observeOn(Schedulers.io())
                 .flatMap(loadedCurrentItem()).subscribe(new RxHelper.EmptyObserver<Boolean>()));
@@ -151,53 +143,34 @@ public class AuctionPresenter extends ViewPresenter {
         compositeSubscription.add(Observable.combineLatest(rxPublisher.getCurrentItemObservable(),
                 rxPublisher.getAggregateBidObservable(), updateWinningStatus()).subscribe(new RxHelper.EmptyObserver<Void>()));
 
-        // TODO throw monetization dialog
-        compositeSubscription.add(deductCoinsObservable.filter(new PositiveNumFilter())
-                .flatMap(observePurchase(iabHelper, activity)).subscribe());
-
-        //click bid button logic:
-        //if has enough coins:
-            //deduct coins, do fanfare, update button state to "youre in the lead!"
-        // if not enough coins:
-            //throw dialog: "not enough coins, buy coins?"
+        // throw monetization dialog
+        compositeSubscription.add(Observable.concat(deductCoinsObservable.filter(new PositiveNumFilter())
+                .flatMap(observePurchase(activity))
+                .flatMap(observeConsume())
+                .withLatestFrom(rxPublisher.getUserObservable(), observeUserConsume()))
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe());
 
         // go to profile page
         compositeSubscription.add(RxView.clicks(ivSettings).throttleFirst(1, TimeUnit.SECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
                 .flatMap(activity.fadeFromAuctionToProfilePresenter())
-                .subscribe(new Observer<Object>() {
-                    @Override
-                    public void onCompleted() {
-                        Timber.i("layout transition onCompleted");
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        Timber.i("layout transition onError: " + e.getMessage());
-                    }
-
-                    @Override
-                    public void onNext(Object aBoolean) {
-                        Timber.i("layout transition onNext");
-                    }
-                }));
+                .subscribe());
 
         compositeSubscription.add(incrementalBidObservable.connect());
         compositeSubscription.add(deductCoinsObservable.connect());
+
         Timber.d("auctionPresenter.onCreate() complete");
     }
 
     @Override
     public void onDestroy() {
         compositeSubscription.unsubscribe();
-        if (iabHelper != null) {
-            try {
-                iabHelper.dispose();
-            } catch (Exception e) {
-
-            }
+        if (billingProcessor != null) {
+            billingProcessor.release();
         }
-        iabHelper = null;
+        billingProcessor = null;
     }
 
     @Override
@@ -208,15 +181,6 @@ public class AuctionPresenter extends ViewPresenter {
     @Override
     public String getPresenterTag() {
         return AUCTION_PRESENTER_TAG;
-    }
-
-    public Func1<Long, Observable<Purchase>> observePurchase(final IabHelper helper, final MainActivity activity) {
-        return new Func1<Long, Observable<Purchase>>() {
-            @Override
-            public Observable<Purchase> call(Long aLong) {
-                return RxBilling.observePurchase(helper, activity);
-            }
-        };
     }
 
     public Func1<User, Observable<User>> updateUser() {
@@ -237,7 +201,6 @@ public class AuctionPresenter extends ViewPresenter {
             }
         };
     }
-
 
     public static class PositiveNumFilter implements Func1<Long, Boolean> {
         @Override
@@ -400,4 +363,68 @@ public class AuctionPresenter extends ViewPresenter {
         };
     }
 
+    public Func2<ConsumeModel, User, Observable<User>> observeUserConsume() {
+        return new Func2<ConsumeModel, User, Observable<User>>() {
+            @Override
+            public Observable<User> call(ConsumeModel consumeModel, User user) {
+                if (consumeModel != null && consumeModel.getErrorCode() == 0) {
+                    user.incCoins(50);
+                    return rxFirebase.observableFirebaseObjectUpdate(user, User.getPath(user), false);
+                }
+                return Observable.just(null);
+            }
+        };
+    }
+
+    boolean canConsumePurchase(PurchaseModel purchaseModel) {
+        return purchaseModel != null && purchaseModel.getPurchaseDataModel() != null &&
+                (purchaseModel.isSuccess() || purchaseModel.getErrorCode() == Constants.BILLING_RESPONSE_RESULT_ITEM_ALREADY_OWNED);
+    }
+
+    Func1<PurchaseModel, Observable<ConsumeModel>> observeConsume() {
+        return new Func1<PurchaseModel, Observable<ConsumeModel>>() {
+            @Override
+            public Observable<ConsumeModel> call(PurchaseModel purchaseModel) {
+                if (canConsumePurchase(purchaseModel)) {
+                    final String productId = purchaseModel.getPurchaseDataModel().getProductId();
+                    Timber.d("consume product:" + productId);
+                    return billingProcessor.consumePurchaseObservable(productId);
+                } else {
+                    Timber.e("Product purchase error code:" + purchaseModel.getErrorCode());
+                    return Observable.just(null);
+                }
+            }
+        };
+    }
+
+    Func1<Long, Observable<PurchaseModel>> observePurchase(final MainActivity activity) {
+        return new Func1<Long, Observable<PurchaseModel>>() {
+            @Override
+            public Observable<PurchaseModel> call(Long aLong) {
+                return billingProcessor.purchaseObservable(activity, CONSUMABLE_PRODUCT_ID);
+            }
+        };
+    }
+
+    public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
+        return billingProcessor.handleActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    public void onProductPurchased(String s, PurchaseDataModel purchaseDataModel) {
+        compositeSubscription.add(Observable.concat(billingProcessor.consumePurchaseObservable(CONSUMABLE_PRODUCT_ID)
+                .subscribeOn(Schedulers.io())
+                .withLatestFrom(rxPublisher.getUserObservable(), observeUserConsume()))
+                .observeOn(AndroidSchedulers.mainThread()).subscribe());
+    }
+
+    @Override
+    public void onPurchaseHistoryRestored() {
+
+    }
+
+    @Override
+    public void onBillingError(int i, Throwable throwable) {
+
+    }
 }

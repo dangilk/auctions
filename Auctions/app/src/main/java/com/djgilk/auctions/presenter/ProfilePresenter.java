@@ -250,7 +250,7 @@ public class ProfilePresenter extends ViewPresenter {
                 user.setState(StringUtils.getString(etState));
                 user.setCountry(StringUtils.getString(etCountry));
                 user.setEmail(StringUtils.getString(etEmail));
-                return rxFirebase.observableFirebaseObjectUpdate(user, User.getParentRootPath() + "/" + user.getFacebookId(), false);
+                return rxFirebase.observableFirebaseObjectUpdate(user, User.getPath(user), false);
             }
         };
     }

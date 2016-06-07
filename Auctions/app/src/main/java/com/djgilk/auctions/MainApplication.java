@@ -26,9 +26,9 @@ public class MainApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
-        if (BuildConfig.DEBUG) {
+        //if (BuildConfig.DEBUG) {
             Timber.plant(new Timber.DebugTree());
-        }
+        //}
 
         // Dagger%COMPONENT_NAME%
         mainComponent = DaggerMainComponent.builder()
@@ -42,6 +42,7 @@ public class MainApplication extends Application {
         // If a Dagger 2 component does not have any constructor arguments for any of its modules,
         // then we can use .create() as a shortcut instead:
         //  mAppComponent = com.codepath.dagger.components.DaggerNetComponent.create();
+
     }
 
     public void addToBackStack(ViewPresenter viewPresenter) {
