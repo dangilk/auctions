@@ -66,7 +66,7 @@ public class RxPublisher {
     public void publish(Activity activity) {
         Timber.d("rxPublisher.publish()");
         // auth layer
-        facebookAuthEventObservable = rxFacebook.observeFacebookAuth(activity, callbackManager).publish();/*.subscribeOn(Schedulers.io()) maybe causes weird race conditions?*/;
+        facebookAuthEventObservable = rxFacebook.observeFacebookAuth(activity, callbackManager).replay(1);/*.subscribeOn(Schedulers.io()) maybe causes weird race conditions?*/;
         firebaseAuthEventObservable = facebookAuthEventObservable.flatMap(rxFirebase.toFirebaseAuthEvent()).publish();
         userCreationObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseUserCreation()).publish();
         loginStateObservable = userCreationObservable.flatMap(rxFirebase.toLoginState()).publish();
@@ -76,7 +76,7 @@ public class RxPublisher {
         clockOffsetObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseClockOffset()).publish();
         currentItemObservable = auctionStateObservable.flatMap(CurrentItem.fromAuctionState(rxFirebase)).publish();
         clientConfigObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).publish();
-        userObservable = userCreationObservable.flatMap(rxFirebase.toFirebaseUser()).replay(1);
+        userObservable = userCreationObservable.flatMap(rxFirebase.toFirebaseUser()).publish();
         aggregateBidObservable = Observable.concat(Observable.combineLatest(auctionStateObservable, userObservable, Bid.observeAggregateBids(firebase))).publish();
 
         // initialization complete
@@ -109,7 +109,6 @@ public class RxPublisher {
             subscription.unsubscribe();
         }
         subscriptions.clear();
-        connectableObservables.clear();
     }
 
     // for facebook login

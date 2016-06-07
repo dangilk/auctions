@@ -18,7 +18,7 @@ public class MainApplication extends Application {
 
     private MainComponent mainComponent;
 
-    // TODO OH GOD DONT DO THIS IT LEAKS LIKE CRAZY
+    // TODO OH GOD DONT DO THIS IT LEAKS LIKE CRAZY?
     private Stack<ViewPresenter> backStack = new Stack<ViewPresenter>();
     private ViewPresenter currentPresenter;
 
@@ -68,4 +68,5 @@ public class MainApplication extends Application {
     public MainComponent getMainComponent() {
         return mainComponent;
     }
+
 }

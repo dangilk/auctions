@@ -52,18 +52,17 @@ public class MainActivity extends AppCompatActivity {
         FacebookSdk.sdkInitialize(getApplicationContext());
         setContentView(R.layout.activity_main);
 
-        rxPublisher.publish(this);
+        if (savedInstanceState == null) {
+            Timber.d("publish observables");
+            rxPublisher.publish(this);
+        } else {
+            Timber.d("not re-publishing observables");
+        }
 
         // initialize presenters
         profilePresenter.onCreate(this);
         loginPresenter.onCreate(this);
         auctionPresenter.onCreate(this);
-
-        // initialize billing service
-//        Intent serviceIntent = new Intent("com.android.vending.billing.InAppBillingService.BIND");
-//        serviceIntent.setPackage("com.android.vending");
-//        bindService(serviceIntent, billingServiceConnection, Context.BIND_AUTO_CREATE);
-
 
         compositeSubscription.add(rxPublisher.getObservablesCompleteObservable().zipWith(Observable.just(null).delay(1, TimeUnit.SECONDS), new RxHelper.ZipWaiter())
         .observeOn(AndroidSchedulers.mainThread())

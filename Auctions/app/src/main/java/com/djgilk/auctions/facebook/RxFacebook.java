@@ -9,6 +9,7 @@ import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
 import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
+import com.fernandocejas.frodo.annotation.RxLogObservable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +32,7 @@ public class RxFacebook {
     @Inject
     RxFacebook(){}
 
+    @RxLogObservable
     public Observable<FacebookAuthEvent> observeFacebookAuth(final Activity activity, final CallbackManager callbackManager) {
         Timber.d("observeFacebookAuth()");
         return Observable.create(new Observable.OnSubscribe<FacebookAuthEvent>() {
@@ -75,10 +77,11 @@ public class RxFacebook {
                     loginManager.logInWithReadPermissions(activity, permissions);
                 } else {
                     Timber.d("facebook access token: " + currentAccessToken.getToken());
-                    //subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
-                    Timber.d("start tracking facebook data");
-                    accessTokenTracker.startTracking();
+                    subscriber.onNext(new FacebookAuthEvent(currentAccessToken));
                 }
+
+                Timber.d("start tracking facebook data");
+                accessTokenTracker.startTracking();
 
                 // When the subscription is cancelled, clean up
                 subscriber.add(Subscriptions.create(new Action0() {
