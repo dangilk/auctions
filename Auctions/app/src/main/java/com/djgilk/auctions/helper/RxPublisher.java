@@ -67,22 +67,21 @@ public class RxPublisher {
         Timber.d("rxPublisher.publish()");
         // auth layer
         facebookAuthEventObservable = rxFacebook.observeFacebookAuth(activity, callbackManager).replay(1);/*.subscribeOn(Schedulers.io()) maybe causes weird race conditions?*/;
-        firebaseAuthEventObservable = facebookAuthEventObservable.flatMap(rxFirebase.toFirebaseAuthEvent()).publish();
-        userCreationObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseUserCreation()).publish();
-        loginStateObservable = userCreationObservable.flatMap(rxFirebase.toLoginState()).publish();
+        firebaseAuthEventObservable = facebookAuthEventObservable.flatMap(rxFirebase.toFirebaseAuthEvent()).replay(1);
+        userCreationObservable = firebaseAuthEventObservable.flatMap(rxFirebase.toFirebaseUserCreation()).replay(1);
+        loginStateObservable = userCreationObservable.flatMap(rxFirebase.toLoginState()).replay(1);
 
         // data layer
-        auctionStateObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(AuctionState.getRootPath(), AuctionState.class)).publish();
-        clockOffsetObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseClockOffset()).publish();
-        currentItemObservable = auctionStateObservable.flatMap(CurrentItem.fromAuctionState(rxFirebase)).publish();
-        clientConfigObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).publish();
-        userObservable = userCreationObservable.flatMap(rxFirebase.toFirebaseUser()).publish();
-        aggregateBidObservable = Observable.concat(Observable.combineLatest(auctionStateObservable, userObservable, Bid.observeAggregateBids(firebase))).publish();
+        auctionStateObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(AuctionState.getRootPath(), AuctionState.class)).replay(1);
+        clockOffsetObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseClockOffset()).replay(1);
+        currentItemObservable = auctionStateObservable.flatMap(CurrentItem.fromAuctionState(rxFirebase)).replay(1);
+        clientConfigObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).replay(1);
+        userObservable = userCreationObservable.flatMap(rxFirebase.toFirebaseUser()).replay(1);
+        aggregateBidObservable = Observable.concat(Observable.combineLatest(auctionStateObservable, userObservable, Bid.observeAggregateBids(firebase))).replay(1);
 
-        // initialization complete
-        observablesCompleteObservable = Observable.zip(currentItemObservable, clientConfigObservable, userObservable, new RxHelper.ZipWaiter3()).publish();
+        observablesCompleteObservable = Observable.zip(currentItemObservable, clientConfigObservable, userObservable, new RxHelper.ZipWaiter3()).replay(1);
 
-        connectableObservables.add(facebookAuthEventObservable);
+
         connectableObservables.add(firebaseAuthEventObservable);
         connectableObservables.add(currentItemObservable);
         connectableObservables.add(clientConfigObservable);
@@ -93,22 +92,17 @@ public class RxPublisher {
         connectableObservables.add(clockOffsetObservable);
         connectableObservables.add(auctionStateObservable);
         connectableObservables.add(aggregateBidObservable);
+        // must be last
+        connectableObservables.add(facebookAuthEventObservable);
         Timber.d("rxPublisher.publish() complete");
     }
 
     public void connect() {
         Timber.d("rxPublisher.connect()");
         for (ConnectableObservable<?> connectableObservable : connectableObservables) {
-            subscriptions.add(connectableObservable.connect());
+            connectableObservable.connect();
         }
         Timber.d("rxPublisher.connect() complete");
-    }
-
-    public void unsubscribe() {
-        for (Subscription subscription : subscriptions) {
-            subscription.unsubscribe();
-        }
-        subscriptions.clear();
     }
 
     // for facebook login

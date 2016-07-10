@@ -60,6 +60,7 @@ public class RxFacebook {
                     }
                 });
 
+                // TODO the startup crashes are almost definitely caused by multiple fb auth attempts.
                 final AccessTokenTracker accessTokenTracker = new AccessTokenTracker() {
                     @Override
                     protected void onCurrentAccessTokenChanged(

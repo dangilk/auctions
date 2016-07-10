@@ -36,7 +36,7 @@ import timber.log.Timber;
  */
 public class ProfilePresenter extends ViewPresenter {
     private final static String PROFILE_PRESENTER_TAG = "profilePresenter";
-    final CompositeSubscription compositeSubscription = new CompositeSubscription();
+    CompositeSubscription compositeSubscription = new CompositeSubscription();
 
     @Inject
     RxPublisher rxPublisher;
@@ -109,6 +109,7 @@ public class ProfilePresenter extends ViewPresenter {
     @Override
     public void onDestroy() {
         compositeSubscription.unsubscribe();
+        compositeSubscription = null;
     }
 
     @Override

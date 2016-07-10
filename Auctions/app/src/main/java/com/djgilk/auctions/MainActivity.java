@@ -27,7 +27,7 @@ import rx.subscriptions.CompositeSubscription;
 import timber.log.Timber;
 
 public class MainActivity extends AppCompatActivity {
-    final CompositeSubscription compositeSubscription = new CompositeSubscription();
+    CompositeSubscription compositeSubscription = new CompositeSubscription();
 
     @Inject
     LoginPresenter loginPresenter;
@@ -83,7 +83,13 @@ public class MainActivity extends AppCompatActivity {
                         Timber.i("layout transition onNext");
                     }
                 }));
-        rxPublisher.connect();
+
+        if (savedInstanceState == null) {
+            Timber.d("connect observables");
+            rxPublisher.connect();
+        } else {
+            Timber.d("not re-connecting observables");
+        }
     }
 
     public Func1<Object, Observable<Object>> fadeFromAuctionToProfilePresenter() {
@@ -100,8 +106,8 @@ public class MainActivity extends AppCompatActivity {
         loginPresenter.onDestroy();
         auctionPresenter.onDestroy();
         profilePresenter.onDestroy();
-        rxPublisher.unsubscribe();
         compositeSubscription.unsubscribe();
+        compositeSubscription = new CompositeSubscription();
         super.onDestroy();
     }
 

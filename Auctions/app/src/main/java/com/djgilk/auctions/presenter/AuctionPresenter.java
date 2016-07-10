@@ -6,6 +6,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.djgilk.auctions.BuildConfig;
 import com.djgilk.auctions.MainActivity;
 import com.djgilk.auctions.MainApplication;
 import com.djgilk.auctions.R;
@@ -34,6 +35,7 @@ import butterknife.Bind;
 import rx.Observable;
 import rx.Observer;
 import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action0;
 import rx.functions.Action1;
 import rx.functions.Func1;
 import rx.functions.Func2;
@@ -47,10 +49,10 @@ import timber.log.Timber;
  */
 public class AuctionPresenter extends ViewPresenter implements BillingProcessor.BillingProcessorListener {
     private final static String AUCTION_PRESENTER_TAG = "auctionPresenter";
-    String CONSUMABLE_PRODUCT_ID = "coins50";//"android.test.purchased";
-    public final static String BILLING_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtE0g6SBWF0jB8k5BgAJPkPoAK/Jv06kHxdaN4VJEVmo5BovzedGZzhJ9A/rmexQ0ggBT7wHvpz1cY9JgLfPDOFIP4NZpwwuuoISWNV7X3vIS+ecSR97LqcALfuMJg197hUcJtqvX1N+OUN9v//oTTctb1aGZbW/36Y6d6PTa6Xh6jZppIza+EOT/1WNIwsYSHzyN+4BgNINAqJPkjAlSAgvHchNrgKHfBjax3KVBYph59iMQ4gJoGHBYXNcP6mbdtjLHeBl03ZyQLbf/AfRYF6CYl0kvAaf4ULTKOhVYkDN67+4xpOu3HJ6cGNIKBIk5wKkd/D+Yf25Do7PI6WhRPwIDAQAB";
+    String CONSUMABLE_PRODUCT_ID = "coins50";
+    String BILLING_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtE0g6SBWF0jB8k5BgAJPkPoAK/Jv06kHxdaN4VJEVmo5BovzedGZzhJ9A/rmexQ0ggBT7wHvpz1cY9JgLfPDOFIP4NZpwwuuoISWNV7X3vIS+ecSR97LqcALfuMJg197hUcJtqvX1N+OUN9v//oTTctb1aGZbW/36Y6d6PTa6Xh6jZppIza+EOT/1WNIwsYSHzyN+4BgNINAqJPkjAlSAgvHchNrgKHfBjax3KVBYph59iMQ4gJoGHBYXNcP6mbdtjLHeBl03ZyQLbf/AfRYF6CYl0kvAaf4ULTKOhVYkDN67+4xpOu3HJ6cGNIKBIk5wKkd/D+Yf25Do7PI6WhRPwIDAQAB";
     BillingProcessor billingProcessor;
-    final CompositeSubscription compositeSubscription = new CompositeSubscription();
+    CompositeSubscription compositeSubscription = new CompositeSubscription();
 
     @Inject
     RxFirebase rxFirebase;
@@ -103,13 +105,30 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
     public void onCreate(final MainActivity activity) {
         super.onCreate(activity);
         Timber.d("auctionPresenter.onCreate()");
+
+        if(BuildConfig.DEBUG) {
+            CONSUMABLE_PRODUCT_ID = "android.test.purchased";
+            BILLING_KEY = "";
+        }
+
         this.billingProcessor = new BillingProcessor(mainApplication, BILLING_KEY, this);
 
-        compositeSubscription.add(rxPublisher.getCurrentItemObservable().doOnNext(new RxHelper.Log<CurrentItem>()).observeOn(Schedulers.io())
+        compositeSubscription.add(rxPublisher.getCurrentItemObservable().observeOn(Schedulers.io())
                 .flatMap(loadedCurrentItem()).subscribe(new RxHelper.EmptyObserver<Boolean>()));
         compositeSubscription.add(rxPublisher.getClientConfigObservable().subscribe(new RxHelper.EmptyObserver<ClientConfig>()));
-        compositeSubscription.add(rxPublisher.getUserObservable().doOnNext(new RxHelper.Log<User>())
-                .flatMap(updateUser()).subscribe(new RxHelper.EmptyObserver<User>()));
+        Timber.e("subscribe to user updates");
+        final Observable<User> userObservable = rxPublisher.getUserObservable().doOnCompleted(new Action0() {
+            @Override
+            public void call() {
+                Timber.d("userObservable onComplete()");
+            }
+        }).doOnNext(new Action1<User>() {
+            @Override
+            public void call(User user) {
+                Timber.d("userObservable onNext()");
+            }
+        });
+        compositeSubscription.add(userObservable.flatMap(updateUser()).subscribe(new RxHelper.EmptyObserver<User>()));
         compositeSubscription.add(
                 Observable.combineLatest(rxPublisher.getClockOffsetObservable(),
                         Observable.interval(1, TimeUnit.SECONDS),
@@ -121,7 +140,7 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
         final ConnectableObservable<Long> incrementalBidObservable =
                 Observable.combineLatest(rxPublisher.getAggregateBidObservable(),
                     rxPublisher.getCurrentItemObservable(),
-                    toIncrementalBid()).publish();
+                    toIncrementalBid()).replay(1);
 
         // observe bid click
         final ConnectableObservable<Long> deductCoinsObservable = Observable.concat(
@@ -150,7 +169,7 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
                 .withLatestFrom(rxPublisher.getUserObservable(), observeUserConsume()))
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe());
+                .subscribe(new RxHelper.EmptyObserver<User>()));
 
         // go to profile page
         compositeSubscription.add(RxView.clicks(ivSettings).throttleFirst(1, TimeUnit.SECONDS)
@@ -166,7 +185,9 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
 
     @Override
     public void onDestroy() {
+        Timber.e("unsubscribing");
         compositeSubscription.unsubscribe();
+        compositeSubscription = null;
         if (billingProcessor != null) {
             billingProcessor.release();
         }
@@ -187,6 +208,7 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
         return new Func1<User, Observable<User>>() {
             @Override
             public Observable<User> call(User user) {
+                Timber.e("update user ui");
                 tvUserCoins.setText(String.valueOf(user.getCoins()));
                 return Observable.just(user);
             }
@@ -364,9 +386,11 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
     }
 
     public Func2<ConsumeModel, User, Observable<User>> observeUserConsume() {
+        Timber.e("observeUserConsume()");
         return new Func2<ConsumeModel, User, Observable<User>>() {
             @Override
             public Observable<User> call(ConsumeModel consumeModel, User user) {
+                Timber.e("consume purchase");
                 if (consumeModel != null && consumeModel.getErrorCode() == 0) {
                     user.incCoins(50);
                     return rxFirebase.observableFirebaseObjectUpdate(user, User.getPath(user), false);
@@ -412,10 +436,13 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
 
     @Override
     public void onProductPurchased(String s, PurchaseDataModel purchaseDataModel) {
-        compositeSubscription.add(Observable.concat(billingProcessor.consumePurchaseObservable(CONSUMABLE_PRODUCT_ID)
+        Timber.e("onProductPurchased");
+        compositeSubscription.add(Observable.concat(
+                billingProcessor.consumePurchaseObservable(CONSUMABLE_PRODUCT_ID)
                 .subscribeOn(Schedulers.io())
                 .withLatestFrom(rxPublisher.getUserObservable(), observeUserConsume()))
-                .observeOn(AndroidSchedulers.mainThread()).subscribe());
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new RxHelper.EmptyObserver<User>()));
     }
 
     @Override
