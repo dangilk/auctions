@@ -5,7 +5,6 @@ import android.app.Application;
 import com.djgilk.auctions.injection.DaggerMainComponent;
 import com.djgilk.auctions.injection.MainComponent;
 import com.djgilk.auctions.injection.MainModule;
-import com.djgilk.auctions.presenter.ViewPresenter;
 
 import java.util.Stack;
 
@@ -18,9 +17,8 @@ public class MainApplication extends Application {
 
     private MainComponent mainComponent;
 
-    // TODO OH GOD DONT DO THIS IT LEAKS LIKE CRAZY?
-    private Stack<ViewPresenter> backStack = new Stack<ViewPresenter>();
-    private ViewPresenter currentPresenter;
+    private Stack<String> backStack = new Stack<String>();
+    private String currentPresenterTag;
 
     @Override
     public void onCreate() {
@@ -45,11 +43,11 @@ public class MainApplication extends Application {
 
     }
 
-    public void addToBackStack(ViewPresenter viewPresenter) {
-        this.backStack.push(viewPresenter);
+    public void addToBackStack(String viewPresenterTag) {
+        this.backStack.push(viewPresenterTag);
     }
 
-    public ViewPresenter popBackStack() {
+    public String popBackStack() {
         if (backStack.size() == 0) {
             return null;
         } else {
@@ -57,12 +55,12 @@ public class MainApplication extends Application {
         }
     }
 
-    public void setCurrentPresenter(ViewPresenter viewPresenter) {
-        this.currentPresenter = viewPresenter;
+    public void setCurrentPresenterTag(String viewPresenterTag) {
+        this.currentPresenterTag = viewPresenterTag;
     }
 
-    public ViewPresenter getCurrentPresenter() {
-        return currentPresenter;
+    public String getCurrentPresenterTag() {
+        return currentPresenterTag;
     }
 
     public MainComponent getMainComponent() {

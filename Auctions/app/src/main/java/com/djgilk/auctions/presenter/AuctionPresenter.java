@@ -48,7 +48,7 @@ import timber.log.Timber;
  * Created by dangilk on 2/27/16.
  */
 public class AuctionPresenter extends ViewPresenter implements BillingProcessor.BillingProcessorListener {
-    private final static String AUCTION_PRESENTER_TAG = "auctionPresenter";
+    public final static String AUCTION_PRESENTER_TAG = "auctionPresenter";
     String CONSUMABLE_PRODUCT_ID = "coins50";
     String BILLING_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtE0g6SBWF0jB8k5BgAJPkPoAK/Jv06kHxdaN4VJEVmo5BovzedGZzhJ9A/rmexQ0ggBT7wHvpz1cY9JgLfPDOFIP4NZpwwuuoISWNV7X3vIS+ecSR97LqcALfuMJg197hUcJtqvX1N+OUN9v//oTTctb1aGZbW/36Y6d6PTa6Xh6jZppIza+EOT/1WNIwsYSHzyN+4BgNINAqJPkjAlSAgvHchNrgKHfBjax3KVBYph59iMQ4gJoGHBYXNcP6mbdtjLHeBl03ZyQLbf/AfRYF6CYl0kvAaf4ULTKOhVYkDN67+4xpOu3HJ6cGNIKBIk5wKkd/D+Yf25Do7PI6WhRPwIDAQAB";
     BillingProcessor billingProcessor;

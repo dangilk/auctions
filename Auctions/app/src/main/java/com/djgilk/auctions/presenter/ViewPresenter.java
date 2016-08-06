@@ -17,4 +17,7 @@ public abstract class ViewPresenter {
         ButterKnife.bind(this, activity);
     }
 
+    public void setVisibility(int visibility) {
+        getLayout().setVisibility(visibility);
+    }
 }

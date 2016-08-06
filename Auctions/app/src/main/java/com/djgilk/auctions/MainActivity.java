@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 
 import com.djgilk.auctions.helper.RxAndroid;
 import com.djgilk.auctions.helper.RxHelper;
@@ -13,8 +14,12 @@ import com.djgilk.auctions.helper.ViewUtils;
 import com.djgilk.auctions.presenter.AuctionPresenter;
 import com.djgilk.auctions.presenter.LoginPresenter;
 import com.djgilk.auctions.presenter.ProfilePresenter;
+import com.djgilk.auctions.presenter.ViewPresenter;
+import com.djgilk.auctions.view.PresenterHolder;
 import com.facebook.FacebookSdk;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
@@ -26,8 +31,10 @@ import rx.functions.Func1;
 import rx.subscriptions.CompositeSubscription;
 import timber.log.Timber;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements PresenterHolder {
     CompositeSubscription compositeSubscription = new CompositeSubscription();
+
+    final Map<String,ViewPresenter> presenterMap = new HashMap<String,ViewPresenter>();
 
     @Inject
     LoginPresenter loginPresenter;
@@ -54,41 +61,68 @@ public class MainActivity extends AppCompatActivity {
 
         if (savedInstanceState == null) {
             Timber.d("publish observables");
+            getMainApplication().setCurrentPresenterTag(loginPresenter.getPresenterTag());
             rxPublisher.publish(this);
         } else {
             Timber.d("not re-publishing observables");
         }
 
+
         // initialize presenters
         profilePresenter.onCreate(this);
         loginPresenter.onCreate(this);
         auctionPresenter.onCreate(this);
+        initPresenterMap(profilePresenter, loginPresenter, auctionPresenter);
+        showCurrentPresenter();
 
-        compositeSubscription.add(rxPublisher.getObservablesCompleteObservable().zipWith(Observable.just(null).delay(1, TimeUnit.SECONDS), new RxHelper.ZipWaiter())
-        .observeOn(AndroidSchedulers.mainThread())
-                .flatMap(new RxAndroid.ToLayoutFade(getMainApplication(), loginPresenter, auctionPresenter, false))
-                .subscribe(new Observer<Object>() {
-                    @Override
-                    public void onCompleted() {
-                        Timber.i("layout transition onCompleted");
-                    }
+        if (savedInstanceState == null) {
+            compositeSubscription.add(rxPublisher.getObservablesCompleteObservable().zipWith(Observable.just(null).delay(1, TimeUnit.SECONDS), new RxHelper.ZipWaiter())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .flatMap(new RxAndroid.ToLayoutFade(getMainApplication(), loginPresenter, auctionPresenter, false))
+                    .subscribe(new Observer<Object>() {
+                        @Override
+                        public void onCompleted() {
+                            Timber.i("layout transition onCompleted");
+                        }
 
-                    @Override
-                    public void onError(Throwable e) {
-                        Timber.i("layout transition onError: " + e.getMessage());
-                    }
+                        @Override
+                        public void onError(Throwable e) {
+                            Timber.i("layout transition onError: " + e.getMessage());
+                        }
 
-                    @Override
-                    public void onNext(Object aBoolean) {
-                        Timber.i("layout transition onNext");
-                    }
-                }));
+                        @Override
+                        public void onNext(Object aBoolean) {
+                            Timber.i("layout transition onNext");
+                        }
+                    }));
+        }
 
         if (savedInstanceState == null) {
             Timber.d("connect observables");
             rxPublisher.connect();
         } else {
             Timber.d("not re-connecting observables");
+        }
+    }
+
+    void initPresenterMap(ViewPresenter... presenters) {
+        for (ViewPresenter presenter: presenters) {
+            presenterMap.put(presenter.getPresenterTag(), presenter);
+        }
+    }
+
+    @Override
+    public Map<String,ViewPresenter> getPresenterMap() {
+        return presenterMap;
+    }
+
+    void showCurrentPresenter() {
+        MainApplication mainApplication = getMainApplication();
+        String currentPresenterTag = mainApplication.getCurrentPresenterTag();
+        if (currentPresenterTag == null) {
+            loginPresenter.setVisibility(View.VISIBLE);
+        } else {
+            presenterMap.get(currentPresenterTag).setVisibility(View.VISIBLE);
         }
     }
 
@@ -147,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (!ViewUtils.goBack(mainApplication)) {
+        if (!ViewUtils.goBack(mainApplication, this)) {
             super.onBackPressed();
         }
     }

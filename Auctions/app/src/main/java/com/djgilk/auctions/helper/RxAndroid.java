@@ -116,9 +116,9 @@ public class RxAndroid {
                     layout2.setVisibility(View.VISIBLE);
                     layout2.startAnimation(fadeIn);
                     if (addToBackStack) {
-                        application.addToBackStack(presenter1);
+                        application.addToBackStack(presenter1.getPresenterTag());
                     }
-                    application.setCurrentPresenter(presenter2);
+                    application.setCurrentPresenterTag(presenter2.getPresenterTag());
                 }
             });
         }

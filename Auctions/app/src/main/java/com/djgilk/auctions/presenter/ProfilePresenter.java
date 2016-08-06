@@ -14,6 +14,7 @@ import com.djgilk.auctions.helper.RxPublisher;
 import com.djgilk.auctions.helper.StringUtils;
 import com.djgilk.auctions.helper.ViewUtils;
 import com.djgilk.auctions.model.User;
+import com.djgilk.auctions.view.PresenterHolder;
 import com.jakewharton.rxbinding.view.RxView;
 import com.jakewharton.rxbinding.widget.RxTextView;
 
@@ -35,7 +36,7 @@ import timber.log.Timber;
  * Created by dangilk on 5/8/16.
  */
 public class ProfilePresenter extends ViewPresenter {
-    private final static String PROFILE_PRESENTER_TAG = "profilePresenter";
+    public final static String PROFILE_PRESENTER_TAG = "profilePresenter";
     CompositeSubscription compositeSubscription = new CompositeSubscription();
 
     @Inject
@@ -100,7 +101,7 @@ public class ProfilePresenter extends ViewPresenter {
 
         compositeSubscription.add(Observable.concat(RxView.clicks(btProfile).throttleFirst(3, TimeUnit.SECONDS)
                 .withLatestFrom(rxPublisher.getUserObservable(), updateUserInfo()))
-                .subscribe(updateObserver()));
+                .subscribe(updateObserver((PresenterHolder)activity)));
 
         compositeSubscription.add(rxPublisher.getUserObservable().subscribe(presetValues()));
         Timber.d("profilePresenter.onCreate() complete");
@@ -150,7 +151,7 @@ public class ProfilePresenter extends ViewPresenter {
                 .doOnNext(new EditTextErrorAction(editText));
     }
 
-    Observer<User> updateObserver() {
+    Observer<User> updateObserver(final PresenterHolder holder) {
         return new Observer<User>() {
             @Override
             public void onCompleted() {
@@ -164,7 +165,7 @@ public class ProfilePresenter extends ViewPresenter {
 
             @Override
             public void onNext(User user) {
-                ViewUtils.goBack(mainApplication);
+                ViewUtils.goBack(mainApplication, holder);
             }
         };
     }

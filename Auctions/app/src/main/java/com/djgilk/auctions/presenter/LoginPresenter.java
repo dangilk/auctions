@@ -14,7 +14,7 @@ import butterknife.Bind;
  * Created by dangilk on 2/25/16.
  */
 public class LoginPresenter extends ViewPresenter {
-    private final static String LOGIN_PRESENTER_TAG = "loginPresenter";
+    public final static String LOGIN_PRESENTER_TAG = "loginPresenter";
 
     @Bind(R.id.ll_login)
     LinearLayout loginLayout;
