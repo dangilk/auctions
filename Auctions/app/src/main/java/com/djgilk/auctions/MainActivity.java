@@ -69,10 +69,11 @@ public class MainActivity extends AppCompatActivity implements PresenterHolder {
 
 
         // initialize presenters
+        initPresenterMap(profilePresenter, loginPresenter, auctionPresenter);
         profilePresenter.onCreate(this);
         loginPresenter.onCreate(this);
         auctionPresenter.onCreate(this);
-        initPresenterMap(profilePresenter, loginPresenter, auctionPresenter);
+
         showCurrentPresenter();
 
         if (savedInstanceState == null) {
@@ -105,6 +106,7 @@ public class MainActivity extends AppCompatActivity implements PresenterHolder {
         }
     }
 
+
     void initPresenterMap(ViewPresenter... presenters) {
         for (ViewPresenter presenter: presenters) {
             presenterMap.put(presenter.getPresenterTag(), presenter);
@@ -126,8 +128,8 @@ public class MainActivity extends AppCompatActivity implements PresenterHolder {
         }
     }
 
-    public Func1<Object, Observable<Object>> fadeFromAuctionToProfilePresenter() {
-        return new RxAndroid.ToLayoutFade(getMainApplication(), auctionPresenter, profilePresenter, true);
+    public Func1<Object, Observable<Object>> fadePresenters(String presenterTag1, String presenterTag2, boolean addToBackstack) {
+        return new RxAndroid.ToLayoutFade(getMainApplication(), presenterMap.get(presenterTag1), presenterMap.get(presenterTag2), addToBackstack);
     }
 
     private MainApplication getMainApplication() {

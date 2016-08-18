@@ -2,6 +2,8 @@ package com.djgilk.auctions.presenter;
 
 import android.content.Intent;
 import android.view.View;
+import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -64,7 +66,13 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
     RxPublisher rxPublisher;
 
     @Bind(R.id.ll_auction)
-    LinearLayout auctionLayout;
+    FrameLayout auctionLayout;
+
+    @Bind(R.id.ll_auctionMain)
+    LinearLayout mainAuctionLayout;
+
+    @Bind(R.id.ll_winConfirmation)
+    LinearLayout winConfirmationLayout;
 
     @Bind(R.id.iv_auctionImage)
     ImageView ivAuctionImage;
@@ -98,6 +106,9 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
 
     @Bind(R.id.iv_settings)
     ImageView ivSettings;
+
+    @Bind(R.id.bt_confirmProfile)
+    Button confirmProfileButton;
 
     @Inject
     public AuctionPresenter(){};
@@ -172,9 +183,16 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
                 .subscribe(new RxHelper.EmptyObserver<User>()));
 
         // go to profile page
-        compositeSubscription.add(RxView.clicks(ivSettings).throttleFirst(1, TimeUnit.SECONDS)
+//        compositeSubscription.add(RxView.clicks(ivSettings).throttleFirst(1, TimeUnit.SECONDS)
+//                .observeOn(AndroidSchedulers.mainThread())
+//                .flatMap(activity.fadePresenters(AUCTION_PRESENTER_TAG, ProfilePresenter.PROFILE_PRESENTER_TAG, true))
+//                .subscribe());
+
+        // go to profile page
+        compositeSubscription.add(RxView.clicks(confirmProfileButton)
+                .mergeWith(RxView.clicks(ivSettings)).throttleFirst(1, TimeUnit.SECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
-                .flatMap(activity.fadeFromAuctionToProfilePresenter())
+                .flatMap(activity.fadePresenters(AUCTION_PRESENTER_TAG, ProfilePresenter.PROFILE_PRESENTER_TAG, true))
                 .subscribe());
 
         compositeSubscription.add(incrementalBidObservable.connect());
@@ -210,6 +228,13 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
             public Observable<User> call(User user) {
                 Timber.e("update user ui");
                 tvUserCoins.setText(String.valueOf(user.getCoins()));
+                if (user.getWinConfirmation().isEmpty()) {
+                    mainAuctionLayout.setVisibility(View.VISIBLE);
+                    winConfirmationLayout.setVisibility(View.INVISIBLE);
+                } else {
+                    winConfirmationLayout.setVisibility(View.VISIBLE);
+                    mainAuctionLayout.setVisibility(View.INVISIBLE);
+                }
                 return Observable.just(user);
             }
         };

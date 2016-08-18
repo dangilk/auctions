@@ -5,6 +5,7 @@ import android.app.Application;
 import com.djgilk.auctions.injection.DaggerMainComponent;
 import com.djgilk.auctions.injection.MainComponent;
 import com.djgilk.auctions.injection.MainModule;
+import com.pavlospt.androidiap.billing.BillingProcessor;
 
 import java.util.Stack;
 
@@ -33,6 +34,8 @@ public class MainApplication extends Application {
                 // list of modules that are part of this component need to be created here too
                 .mainModule(new MainModule(this)) // This also corresponds to the name of your module: %component_name%Module
                 .build();
+
+        BillingProcessor.init(this);
 
         //can add this line to enable memory leak detection
         //LeakCanary.install(this);

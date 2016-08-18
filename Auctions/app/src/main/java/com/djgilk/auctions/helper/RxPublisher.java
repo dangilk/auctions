@@ -79,7 +79,7 @@ public class RxPublisher {
         userObservable = userCreationObservable.flatMap(rxFirebase.toFirebaseUser()).replay(1);
         aggregateBidObservable = Observable.concat(Observable.combineLatest(auctionStateObservable, userObservable, Bid.observeAggregateBids(firebase))).replay(1);
 
-        observablesCompleteObservable = Observable.zip(currentItemObservable, clientConfigObservable, userObservable, new RxHelper.ZipWaiter3()).replay(1);
+        observablesCompleteObservable = Observable.zip(userObservable, currentItemObservable, clientConfigObservable, new RxHelper.ZipWaiter3()).replay(1);
 
 
         connectableObservables.add(firebaseAuthEventObservable);

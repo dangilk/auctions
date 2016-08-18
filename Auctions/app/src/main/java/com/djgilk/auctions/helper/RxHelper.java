@@ -15,17 +15,17 @@ import timber.log.Timber;
  */
 public class RxHelper {
 
-    public static class ZipWaiter implements Func2<Object, Object, Boolean> {
+    public static class ZipWaiter<T extends Object> implements Func2<T, Object, T> {
         @Override
-        public Boolean call(Object o, Object o2) {
-            return true;
+        public T call(T o, Object o2) {
+            return o;
         }
     }
 
-    public static class ZipWaiter3 implements Func3<Object,Object,Object,Boolean> {
+    public static class ZipWaiter3<T extends Object> implements Func3<T,Object,Object,T> {
         @Override
-        public Boolean call(Object o, Object o2, Object o3) {
-            return true;
+        public T call(T o, Object o2, Object o3) {
+            return o;
         }
     }
 

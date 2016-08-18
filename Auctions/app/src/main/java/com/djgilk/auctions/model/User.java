@@ -20,6 +20,7 @@ public class User {
     private String zip;
     private String email;
     private String country;
+    private String winConfirmation;
 
     public User() {
         new User(null,null,null,0,null,null,null,null,null);
@@ -61,6 +62,8 @@ public class User {
     public String getCountry() {
         return country;
     }
+
+    public String getWinConfirmation() {return winConfirmation;}
 
     public int getCoins() {
         return coins;
