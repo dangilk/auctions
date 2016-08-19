@@ -110,6 +110,12 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
     @Bind(R.id.bt_confirmProfile)
     Button confirmProfileButton;
 
+    @Bind(R.id.iv_wonAuctionImage)
+    ImageView wonAuctionImage;
+
+    @Bind(R.id.tv_wonAuctionTitle)
+    TextView wonAuctionTitle;
+
     @Inject
     public AuctionPresenter(){};
 
@@ -183,17 +189,21 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
                 .subscribe(new RxHelper.EmptyObserver<User>()));
 
         // go to profile page
-//        compositeSubscription.add(RxView.clicks(ivSettings).throttleFirst(1, TimeUnit.SECONDS)
-//                .observeOn(AndroidSchedulers.mainThread())
-//                .flatMap(activity.fadePresenters(AUCTION_PRESENTER_TAG, ProfilePresenter.PROFILE_PRESENTER_TAG, true))
-//                .subscribe());
-
-        // go to profile page
-        compositeSubscription.add(RxView.clicks(confirmProfileButton)
-                .mergeWith(RxView.clicks(ivSettings)).throttleFirst(1, TimeUnit.SECONDS)
+        compositeSubscription.add(RxView.clicks(ivSettings).throttleFirst(1, TimeUnit.SECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
                 .flatMap(activity.fadePresenters(AUCTION_PRESENTER_TAG, ProfilePresenter.PROFILE_PRESENTER_TAG, true))
                 .subscribe());
+
+        // go to profile page
+        compositeSubscription.add(RxView.clicks(confirmProfileButton).throttleFirst(1, TimeUnit.SECONDS)
+                .observeOn(AndroidSchedulers.mainThread())
+                .flatMap(activity.fadePresenters(AUCTION_PRESENTER_TAG, ProfilePresenter.PROFILE_PRESENTER_TAG, true))
+                .subscribe());
+
+        // observe win confirmation item
+        compositeSubscription.add(rxPublisher.getItemWinConfirmationObservable()
+                .flatMap(loadedWonItem())
+                .subscribe(new RxHelper.EmptyObserver<Boolean>()));
 
         compositeSubscription.add(incrementalBidObservable.connect());
         compositeSubscription.add(deductCoinsObservable.connect());
@@ -230,10 +240,10 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
                 tvUserCoins.setText(String.valueOf(user.getCoins()));
                 if (user.getWinConfirmation().isEmpty()) {
                     mainAuctionLayout.setVisibility(View.VISIBLE);
-                    winConfirmationLayout.setVisibility(View.INVISIBLE);
+                    winConfirmationLayout.setVisibility(View.GONE);
                 } else {
                     winConfirmationLayout.setVisibility(View.VISIBLE);
-                    mainAuctionLayout.setVisibility(View.INVISIBLE);
+                    mainAuctionLayout.setVisibility(View.GONE);
                 }
                 return Observable.just(user);
             }
@@ -284,6 +294,20 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
                         Observable.just(currentItem).observeOn(AndroidSchedulers.mainThread())
                                 .flatMap(new RxAndroid.ToUpdatedTextView(tvAuctionTitle, currentItem.getName()))
                                 .flatMap(new RxAndroid.ToUpdatedTextView(tvHighBid, String.valueOf(currentItem.getHighBid()))),
+                        new RxHelper.ZipWaiter());
+            }
+        };
+    }
+
+    public Func1<CurrentItem, Observable<Boolean>> loadedWonItem() {
+        return new Func1<CurrentItem, Observable<Boolean>>() {
+            @Override
+            public Observable<Boolean> call(CurrentItem currentItem) {
+                return Observable.zip(
+                        RxAndroid.observeBitmap(currentItem.getImageUrl()).subscribeOn(Schedulers.io())
+                                .observeOn(AndroidSchedulers.mainThread()).flatMap(new RxAndroid.ToLoadedImageView(wonAuctionImage)),
+                        Observable.just(currentItem).observeOn(AndroidSchedulers.mainThread())
+                                .flatMap(new RxAndroid.ToUpdatedTextView(wonAuctionTitle, currentItem.getName())),
                         new RxHelper.ZipWaiter());
             }
         };

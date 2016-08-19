@@ -44,6 +44,7 @@ public class RxPublisher {
     ConnectableObservable<Long> clockOffsetObservable;
     ConnectableObservable<AuctionState> auctionStateObservable;
     ConnectableObservable<Long> aggregateBidObservable;
+    ConnectableObservable<CurrentItem> itemWinConfirmationObservable;
 
     List<ConnectableObservable<?>> connectableObservables = new ArrayList<ConnectableObservable<?>>();
     Set<Subscription> subscriptions = new HashSet<Subscription>();
@@ -78,6 +79,7 @@ public class RxPublisher {
         clientConfigObservable = loginStateObservable.flatMap(rxFirebase.toFirebaseObject(ClientConfig.getRootPath(), ClientConfig.class)).replay(1);
         userObservable = userCreationObservable.flatMap(rxFirebase.toFirebaseUser()).replay(1);
         aggregateBidObservable = Observable.concat(Observable.combineLatest(auctionStateObservable, userObservable, Bid.observeAggregateBids(firebase))).replay(1);
+        itemWinConfirmationObservable = userObservable.filter(User.hasWinConfirmationItem()).flatMap(CurrentItem.fromUserWinConfirmation(rxFirebase)).replay(1);
 
         observablesCompleteObservable = Observable.zip(userObservable, currentItemObservable, clientConfigObservable, new RxHelper.ZipWaiter3()).replay(1);
 
@@ -92,6 +94,7 @@ public class RxPublisher {
         connectableObservables.add(clockOffsetObservable);
         connectableObservables.add(auctionStateObservable);
         connectableObservables.add(aggregateBidObservable);
+        connectableObservables.add(itemWinConfirmationObservable);
         // must be last
         connectableObservables.add(facebookAuthEventObservable);
         Timber.d("rxPublisher.publish() complete");
@@ -132,6 +135,10 @@ public class RxPublisher {
 
     public ConnectableObservable<AuctionState> getAuctionStateObservable() {
         return auctionStateObservable;
+    }
+
+    public ConnectableObservable<CurrentItem> getItemWinConfirmationObservable() {
+        return itemWinConfirmationObservable;
     }
 
     public ConnectableObservable<User> getUserObservable() {

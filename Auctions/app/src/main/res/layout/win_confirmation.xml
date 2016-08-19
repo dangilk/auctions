@@ -13,6 +13,26 @@
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="Wow! You won an auction!"/>
 
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxHeight="300dp"
+            android:minHeight="200dp"
+            android:id="@+id/iv_wonAuctionImage"
+            android:layout_gravity="center_horizontal"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:layout_gravity="center"
+            android:textSize="20sp"
+            android:text="Extra Large Lamp"
+            android:id="@+id/tv_wonAuctionTitle" />
+    </FrameLayout>
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

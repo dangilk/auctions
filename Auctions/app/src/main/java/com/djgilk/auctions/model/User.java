@@ -1,5 +1,7 @@
 package com.djgilk.auctions.model;
 
+import rx.functions.Func1;
+
 /**
  * Created by dangilk on 3/1/16.
  */
@@ -145,6 +147,15 @@ public class User {
     @Override
     public String toString() {
         return "User{coins: "+coins+", id: "+facebookId+"}";
+    }
+
+    public static Func1<User, Boolean> hasWinConfirmationItem() {
+        return new Func1<User, Boolean>() {
+            @Override
+            public Boolean call(User user) {
+                return !user.getWinConfirmation().isEmpty();
+            }
+        };
     }
 
     @Override

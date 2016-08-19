@@ -53,6 +53,15 @@ public class CurrentItem {
         };
     }
 
+    public static Func1<User, Observable<CurrentItem>> fromUserWinConfirmation(final RxFirebase rxFirebase) {
+        return new Func1<User, Observable<CurrentItem>>() {
+            @Override
+            public Observable<CurrentItem> call(User user) {
+                return rxFirebase.observeFirebaseObject(getParentRootPath() + "/" + user.getWinConfirmation(), CurrentItem.class);
+            }
+        };
+    }
+
     @Override
     public String toString() {
         return "CurrentItem {highBid: "+highBid+"}";
