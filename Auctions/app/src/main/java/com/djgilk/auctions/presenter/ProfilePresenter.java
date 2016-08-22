@@ -192,6 +192,11 @@ public class ProfilePresenter extends ViewPresenter {
                 etState.setText(user.getState());
                 etCountry.setText(user.getCountry());
                 etEmail.setText(user.getEmail());
+                if (user.getWinConfirmation().isEmpty()) {
+                    btProfile.setText("save and return");
+                } else {
+                    btProfile.setText("ship my item!");
+                }
             }
         };
     }
@@ -252,6 +257,7 @@ public class ProfilePresenter extends ViewPresenter {
                 user.setState(StringUtils.getString(etState));
                 user.setCountry(StringUtils.getString(etCountry));
                 user.setEmail(StringUtils.getString(etEmail));
+                user.clearWinConfirmation();
                 return rxFirebase.observableFirebaseObjectUpdate(user, User.getPath(user), false);
             }
         };

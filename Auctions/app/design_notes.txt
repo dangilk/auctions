@@ -1,0 +1,5 @@
+at auction end, the BE will recalc all bids and set 2 items: insert a PendingShipment{userid, itemid}, and set the winConfirmation string for the winning user.
+
+user will confirm their win, thus clearing the winConfirmation string.
+
+nightly, the BE will process PendingShipments only if the given user has a clear winConfirmation string.

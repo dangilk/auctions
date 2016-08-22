@@ -128,6 +128,10 @@ public class User {
         this.email = email;
     }
 
+    public void clearWinConfirmation() {
+        this.winConfirmation = "";
+    }
+
     public void setCountry(String country) {
         this.country = country;
     }

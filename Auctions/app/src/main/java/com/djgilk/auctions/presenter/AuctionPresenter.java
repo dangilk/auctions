@@ -238,7 +238,8 @@ public class AuctionPresenter extends ViewPresenter implements BillingProcessor.
             public Observable<User> call(User user) {
                 Timber.e("update user ui");
                 tvUserCoins.setText(String.valueOf(user.getCoins()));
-                if (user.getWinConfirmation().isEmpty()) {
+                final String winConfirmation = user.getWinConfirmation();
+                if (winConfirmation == null || winConfirmation.isEmpty()) {
                     mainAuctionLayout.setVisibility(View.VISIBLE);
                     winConfirmationLayout.setVisibility(View.GONE);
                 } else {
